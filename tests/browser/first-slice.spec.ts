@@ -19,6 +19,10 @@ test('keyboard mission opens the gate after the color circuit',async({page},test
   await page.locator('#start').click();
   await expect(page.locator('#form')).toHaveText('🤖 Робот');
   await page.screenshot({path:testInfo.outputPath('robot-start.png'),fullPage:true});
+  await page.keyboard.press('j');
+  await expect(page.locator('#game')).toHaveAttribute('data-last-action','strike');
+  await page.keyboard.press('k');
+  await expect(page.locator('#game')).toHaveAttribute('data-last-action','pulse');
   await page.evaluate(()=>{
     document.documentElement.dataset.lastKey='';
     window.addEventListener('keydown',event=>{document.documentElement.dataset.lastKey=event.code;},{once:true});
@@ -40,17 +44,12 @@ test('keyboard mission opens the gate after the color circuit',async({page},test
   }
   await expect(page.locator('#objective')).toHaveText('Собери три энергоячейки');
   await expect(page.locator('#puzzle')).toBeHidden();
-  await page.keyboard.down('w');
-  await page.waitForTimeout(850);
-  await page.keyboard.up('w');
-  expect(await coordinate(page,'Z')).toBeGreaterThan(.25);
-  await holdUntil(page,'d','X',2.1,'above');
-  await holdUntil(page,'w','Z',-3.2,'below');
-  await holdUntil(page,'a','X',.45,'below');
-  await page.keyboard.down('w');
-  try{await expect(page.locator('#game')).toHaveAttribute('data-checkpoint','gate',{timeout:25000});}
-  finally{await page.keyboard.up('w');}
+  await expect(page.locator('#chapter-title')).toHaveText('Энергия реки');
+  await expect(page.locator('#game')).toHaveAttribute('data-mission','river');
+  await page.screenshot({path:testInfo.outputPath('chapter-02.png'),fullPage:true});
+  await page.locator('#chapter-start').click();
   await holdUntil(page,'w','Z',-11.7,'below');
+  await expect(page.locator('#game')).toHaveAttribute('data-checkpoint','gate',{timeout:25000});
   await page.setViewportSize({width:1280,height:720});
   await page.screenshot({path:testInfo.outputPath('gate-and-first-fork-1280.png'),fullPage:true});
   await holdUntil(page,'a','X',-4.1,'below');

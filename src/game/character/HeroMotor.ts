@@ -3,6 +3,7 @@ export type HeroForm = 'robot' | 'vehicle';
 export interface HeroIntent {
   forward:boolean; back:boolean; left:boolean; right:boolean;
   jumpPressed:boolean; transformPressed:boolean;
+  strikePressed?:boolean; pulsePressed?:boolean;
 }
 export interface HeroPose {
   x:number; y:number; z:number;

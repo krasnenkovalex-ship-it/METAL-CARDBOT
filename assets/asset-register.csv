@@ -5,4 +5,7 @@ synth_music_sfx,audio-code,IN_USE,repository contributors,unconfirmed,src/game/a
 hero_robot_glb,3d-model,PLANNED,not assigned,unconfirmed,original commission,not yet granted,no,no
 hero_vehicle_glb,3d-model,PLANNED,not assigned,unconfirmed,original commission,not yet granted,no,no
 forest_kit,environment,PLANNED,not assigned,unconfirmed,original commission,not yet granted,no,no
+rounded_hero_panels,3d-code,IN_USE,repository contributors,unconfirmed,src/game/character/AnimatedHero.ts,original procedural mesh,yes,no
+campaign_props,3d-code,IN_USE,repository contributors,unconfirmed,src/game/world/MissionProps.ts,original procedural geometry,yes,no
+terrain_grain,texture-code,IN_USE,repository contributors,unconfirmed,src/game/world/ForestWorld.ts,original deterministic runtime canvas texture,yes,no
 

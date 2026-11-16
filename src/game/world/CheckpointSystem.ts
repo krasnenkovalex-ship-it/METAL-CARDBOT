@@ -4,13 +4,16 @@ import type {HeroForm} from '../character/HeroMotor';
 
 export class CheckpointSystem {
   private active:CheckpointDef=TECH_FOREST.checkpoints[0];
+  private chapterAnchor:PointXZ|null=null;
   get id():string{return this.active.id;}
-  get position():PointXZ{return {...this.active.at};}
+  get position():PointXZ{return {...(this.chapterAnchor??this.active.at)};}
+  setChapterAnchor(p:PointXZ):void{this.chapterAnchor={...p};}
   visit(p:PointXZ,gateOpen:boolean):string|null{
     for(const point of TECH_FOREST.checkpoints){
       if(point.rank<=this.active.rank||point.needsGate&&!gateOpen)continue;
       if(Math.hypot(p.x-point.at.x,p.z-point.at.z)<=point.radius){
         this.active=point;
+        this.chapterAnchor={...point.at};
         return point.id;
       }
     }
