@@ -180,15 +180,22 @@ app.on('update',(rawDt:number)=>{
   const oldForm=motor.pose.form;
   let remaining=dt;
   let firstStep=true;
+  let found=0;
+  let reachedPortal=false;
   while(remaining>0){
     const step=Math.min(.05,remaining);
     motor.update(step,firstStep?input:{...input,jumpPressed:false,transformPressed:false},puzzleOpen);
+    // Check interactions at each simulation position so a slow frame cannot skip them.
+    if(!world.gatePassable)motor.constrain(-8,8,-8.6,12);
+    else motor.constrain(-8,8,-30,12);
+    const at=motor.pose;
+    if(trigger.update(at.x,at.z,step,!puzzleOpen&&at.grounded&&!at.transforming))openCircuit();
+    found+=world.collect(at.x,at.z);
+    reachedPortal=world.isAtPortal(at.x,at.z);
     remaining-=step;
     firstStep=false;
+    if(reachedPortal)break;
   }
-  // The closed gate blocks the first path, without resetting earned progress.
-  if(!world.gatePassable)motor.constrain(-8,8,-8.6,12);
-  else motor.constrain(-8,8,-30,12);
   const pose=motor.pose;
   hero.update(pose,elapsed);
   if(!wasGrounded&&pose.grounded)audio.effect('land');
@@ -210,8 +217,6 @@ app.on('update',(rawDt:number)=>{
   cameraLook.set(pc.math.lerp(cameraLook.x,pose.x,t),pc.math.lerp(cameraLook.y,focusY,t),pc.math.lerp(cameraLook.z,pose.z-2.1,t));
   camera.lookAt(cameraLook);
   world.update(elapsed,dt);
-  if(trigger.update(pose.x,pose.z,dt,!puzzleOpen&&pose.grounded&&!pose.transforming))openCircuit();
-  const found=world.collect(pose.x,pose.z);
   if(found){
     audio.effect('pickup');
     progress.textContent='⚡ '+world.collectedCount+' / 3';
@@ -221,7 +226,7 @@ app.on('update',(rawDt:number)=>{
       speak('Отлично! Все три кристалла собраны. Найди сияющий портал.');
     }
   }
-  if(world.isAtPortal(pose.x,pose.z)){
+  if(reachedPortal){
     finished=true;victory.classList.remove('hidden');
     audio.effect('victory');
     speak('Миссия выполнена! Ты помог Технолесу. Молодец!');
