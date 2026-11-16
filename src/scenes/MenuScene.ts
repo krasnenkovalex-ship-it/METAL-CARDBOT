@@ -1,17 +1,25 @@
 import Phaser from 'phaser';
 export class MenuScene extends Phaser.Scene{
- constructor(){super('Menu')}
+ constructor(){super('Menu');}
  create(){
-  this.cameras.main.setBackgroundColor('#132d50');
-  for(let i=0;i<65;i++){this.add.circle((i*137)%1280,(i*89)%720,1+i%4,0x73d9ff,.15+i%3*.09)}
-  this.add.text(640,137,'METAL CARDBOT',{fontFamily:'system-ui',fontStyle:'bold',fontSize:'65px',color:'#e4faff'}).setOrigin(.5);
-  this.add.text(640,212,'2D • ПРИКЛЮЧЕНИЯ ЭНЕРГОНА',{fontFamily:'system-ui',fontSize:'28px',color:'#a7f1ff'}).setOrigin(.5);
-  this.add.text(640,310,'10 миров в плане · 1 игровая сцена в разработке',{fontFamily:'system-ui',fontSize:'25px',color:'#fff0b3'}).setOrigin(.5);
-  this.add.text(640,384,'Бегай • Прыгай • Превращайся • Решай головоломки',{fontFamily:'system-ui',fontSize:'22px',color:'#deefff'}).setOrigin(.5);
-  const start=this.add.rectangle(640,499,400,80,0xb2f65b).setInteractive({useHandCursor:true});
-  this.add.text(640,499,'▶ НАЧАТЬ МИССИЮ',{fontFamily:'system-ui',fontSize:'27px',fontStyle:'bold',color:'#152a25'}).setOrigin(.5);
-  start.on('pointerdown',()=>this.scene.start('Play'));
-  this.add.text(640,650,'WASD / стрелки — идти · Пробел — прыгнуть · E — машина',{fontSize:'19px',color:'#b3d0f2'}).setOrigin(.5);
-  this.add.text(640,687,'Инженерный прототип: оригинальные временные спрайты, без официальных моделей.',{fontSize:'13px',color:'#96acc7'}).setOrigin(.5);
+   this.cameras.main.setBackgroundColor('#58bfe9');
+   this.add.image(640,360,'sky').setDisplaySize(1280,720).setAlpha(.97);
+   const back=this.add.image(640,490,'forest-back').setDisplaySize(1280,525).setAlpha(.64);
+   this.tweens.add({targets:back,x:655,duration:6500,yoyo:true,repeat:-1,ease:'Sine.inOut'});
+   const shadow=this.add.rectangle(640,354,1190,640,0x08233c,.69).setStrokeStyle(2,0xb1efff,.4);
+   shadow.setAlpha(.94);
+   const robot=this.add.image(965,410,'robot').setScale(1.35).setDepth(5);
+   this.tweens.add({targets:robot,y:398,duration:760,yoyo:true,repeat:-1,ease:'Sine.inOut'});
+   this.add.text(96,115,'МЕТАЛ КАРБОТ',{fontFamily:'system-ui',fontSize:'62px',fontStyle:'bold',color:'#edfaff',stroke:'#0c3456',strokeThickness:9});
+   this.add.text(98,195,'БЛЮ КОП · ПРИКЛЮЧЕНИЕ 2D',{fontFamily:'system-ui',fontSize:'27px',fontStyle:'bold',color:'#7cecff'});
+   this.add.text(99,269,'ТЕХНОЛЕС: СПАСЕНИЕ ЭНЕРГОЯДРА',{fontFamily:'system-ui',fontSize:'26px',fontStyle:'bold',color:'#ffe998'});
+   this.add.text(99,328,'Беги, прыгай, превращайся в машину.\nРешай задачки и спасай друзей!',{fontFamily:'system-ui',fontSize:'24px',color:'#e2f1ff',lineSpacing:12});
+   const button=this.add.rectangle(337,474,478,84,0xc5ff81).setStrokeStyle(4,0xffffff).setInteractive({useHandCursor:true});
+   const label=this.add.text(337,474,'▶  НАЧАТЬ ИГРУ',{fontFamily:'system-ui',fontSize:'30px',fontStyle:'bold',color:'#15354a'}).setOrigin(.5);
+   const begin=()=>this.scene.start('Play');
+   button.on('pointerdown',begin);label.setInteractive({useHandCursor:true}).on('pointerdown',begin);
+   this.add.text(100,573,'МИССИЯ 01 · Технолес',{fontFamily:'system-ui',fontSize:'21px',fontStyle:'bold',color:'#bbf1ff'});
+   this.add.text(100,609,'10 миров запланировано · В работе первый уровень',{fontFamily:'system-ui',fontSize:'17px',color:'#d0eaff'});
+   this.add.text(100,652,'A/D или стрелки — ходить   ·   ПРОБЕЛ — прыгать   ·   E — машина',{fontFamily:'system-ui',fontSize:'15px',color:'#a7c7d7'});
  }
 }
