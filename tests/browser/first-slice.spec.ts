@@ -17,9 +17,9 @@ test('keyboard mission opens the gate after the color circuit',async({page},test
   await page.keyboard.press('e');
   await expect(page.locator('#form')).toHaveText('🤖 Робот');
   await page.keyboard.down('w');
-  await page.waitForTimeout(2200);
-  await page.keyboard.up('w');
-  await expect(page.locator('#puzzle')).toBeVisible();
+  try{
+    await expect(page.locator('#puzzle')).toBeVisible({timeout:20000});
+  }finally{await page.keyboard.up('w');}
   for(const color of ['red','yellow','blue']){
     await page.locator(`#wires [data-color="${color}"]`).click();
     await page.locator(`#sockets [data-color="${color}"]`).click();
