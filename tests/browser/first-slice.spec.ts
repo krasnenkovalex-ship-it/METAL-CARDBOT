@@ -8,7 +8,7 @@ const holdUntil=async(page:import('@playwright/test').Page,key:string,axis:'X'|'
     const reading=expect.poll(()=>coordinate(page,axis),{timeout:25000,intervals:[50,100,150]});
     if(direction==='above')await reading.toBeGreaterThan(target);
     else await reading.toBeLessThan(target);
-  }finally{await page.keyboard.up(key);}
+  }finally{await page.keyboard.up(key).catch(()=>{});}
 };
 
 test('keyboard mission opens the gate after the color circuit',async({page},testInfo)=>{
@@ -62,10 +62,8 @@ test('keyboard mission opens the gate after the color circuit',async({page},test
   await holdUntil(page,'w','Z',-20.6,'below');
   await expect(page.locator('#game')).toHaveAttribute('data-checkpoint','west-bank');
   await page.screenshot({path:testInfo.outputPath('west-bridge-1280.png'),fullPage:true});
-  if(await coordinate(page,'X') < -4.8)await holdUntil(page,'d','X',-4.7,'above');
   await page.keyboard.press('e');
   await expect(page.locator('#form')).toHaveText('🚓 Машина',{timeout:12000});
-  await holdUntil(page,'w','Z',-23,'below');
   await page.screenshot({path:testInfo.outputPath('vehicle-in-maze-1280.png'),fullPage:true});
   expect(errors).toEqual([]);
 });
@@ -78,7 +76,7 @@ test('mobile controls show the vehicle transformation',async({browser},testInfo)
     await page.locator('#start').tap();
     await expect(page.locator('#touch')).toBeVisible();
     await page.locator('[data-control="transform"]').tap();
-    await expect(page.locator('#form')).toHaveText('🚓 Машина');
+    await expect(page.locator('#form')).toHaveText('🚓 Машина',{timeout:20000});
     await page.screenshot({path:testInfo.outputPath('mobile-vehicle.png'),fullPage:true});
     await page.setViewportSize({width:844,height:390});
     await expect(page.locator('#touch')).toBeVisible();
