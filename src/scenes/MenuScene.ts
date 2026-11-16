@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import {audio} from '../systems/Audio';
 export class MenuScene extends Phaser.Scene{
  constructor(){super('Menu');}
  create(){
@@ -16,7 +17,7 @@ export class MenuScene extends Phaser.Scene{
    this.add.text(99,328,'Беги, прыгай, превращайся в машину.\nРешай задачки и спасай друзей!',{fontFamily:'system-ui',fontSize:'24px',color:'#e2f1ff',lineSpacing:12});
    const button=this.add.rectangle(337,474,478,84,0xc5ff81).setStrokeStyle(4,0xffffff).setInteractive({useHandCursor:true});
    const label=this.add.text(337,474,'▶  НАЧАТЬ ИГРУ',{fontFamily:'system-ui',fontSize:'30px',fontStyle:'bold',color:'#15354a'}).setOrigin(.5);
-   const begin=()=>this.scene.start('Play');
+   const begin=()=>{void audio.start().catch(()=>{/* browser blocked autoplay */});this.scene.start('Play');};
    button.on('pointerdown',begin);label.setInteractive({useHandCursor:true}).on('pointerdown',begin);
    this.add.text(100,573,'МИССИЯ 01 · Технолес',{fontFamily:'system-ui',fontSize:'21px',fontStyle:'bold',color:'#bbf1ff'});
    this.add.text(100,609,'10 миров запланировано · В работе первый уровень',{fontFamily:'system-ui',fontSize:'17px',color:'#d0eaff'});

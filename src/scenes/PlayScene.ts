@@ -170,6 +170,8 @@ export class PlayScene extends Phaser.Scene{
    this.hud=this.add.text(1210,15,'✦ КРИСТАЛЛЫ  0 / 4',{fontSize:'22px',fontFamily:'system-ui',fontStyle:'bold',color:'#ffe491'}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
    this.objective=this.add.text(24,82,'Подойди к синему терминалу',{fontSize:'20px',fontFamily:'system-ui',fontStyle:'bold',color:'#fff6c7',stroke:'#174366',strokeThickness:5}).setScrollFactor(0).setDepth(81);
    this.formLabel=this.add.text(1220,82,'🤖 РОБОТ  ·  E — ПРЕВРАЩЕНИЕ',{fontSize:'16px',fontFamily:'system-ui',color:'#e7f6ff',stroke:'#174366',strokeThickness:4}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
+   const mute=this.add.text(1245,82,'♫',{fontSize:'25px',color:'#ccfaff'}).setOrigin(1,0).setScrollFactor(0).setDepth(90).setInteractive({useHandCursor:true});
+   mute.on('pointerdown',()=>{const off=audio.toggle();mute.setText(off?'♪':'♫');});
    this.makeMobileControls();
    this.game.events.off('puzzle:solved');this.game.events.off('puzzle:cancel');
    this.game.events.on('puzzle:solved',(id:Mission)=>this.solvePuzzle(id));
@@ -232,7 +234,7 @@ export class PlayScene extends Phaser.Scene{
      if(!inRange){this.waitForExit.delete(id);continue;}
      if(!this.waitForExit.has(id)){this.beginPuzzle(id);break;}
    }
-   if(this.player.y>715)this.hit();
+   if(this.player.y>645)this.hit();
    if(this.player.x>=3540){
      if(this.gems===4&&this.completed.has('bridge')&&this.completed.has('generator')){
        audio.effect('win');markComplete(1,this.gems);this.scene.start('Win',{crystals:this.gems});
