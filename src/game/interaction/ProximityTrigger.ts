@@ -4,18 +4,19 @@ export type TriggerState='ready'|'dwelling'|'active'|'waiting-for-exit'|'complet
 export class ProximityTrigger {
   private state:TriggerState='ready';
   private dwell=0;
-  constructor(
-    public readonly id:string,
-    public readonly x:number,
-    public readonly z:number,
-    public readonly enterRadius=2.2,
-    public readonly exitRadius=3.2,
-    public readonly minDwell=0.28
-  ) {
+  readonly id:string;
+  readonly x:number;
+  readonly z:number;
+  readonly enterRadius:number;
+  readonly exitRadius:number;
+  readonly minDwell:number;
+  constructor(id:string,x:number,z:number,enterRadius=2.2,exitRadius=3.2,minDwell=0.28){
     if(exitRadius<=enterRadius) throw new Error('Exit radius must exceed enter radius');
+    this.id=id;this.x=x;this.z=z;
+    this.enterRadius=enterRadius;this.exitRadius=exitRadius;this.minDwell=minDwell;
   }
   get status():TriggerState{return this.state;}
-  update(x:number,z:number,dt:number,canActivate:boolean):boolean {
+  update(x:number,z:number,dt:number,canActivate:boolean):boolean{
     if(this.state==='active'||this.state==='complete')return false;
     const distance=Math.hypot(x-this.x,z-this.z);
     if(this.state==='waiting-for-exit'){
