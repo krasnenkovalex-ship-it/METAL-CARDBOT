@@ -94,8 +94,13 @@ export class PlayScene extends Phaser.Scene{
      const b=this.add.circle(x,y,68,color,.72).setStrokeStyle(3,0x9bebff,.8).setScrollFactor(0).setDepth(90).setInteractive();
      this.add.text(x,y,label,{fontSize:'37px',fontStyle:'bold',color:'#ffffff'}).setOrigin(.5).setScrollFactor(0).setDepth(91);
      b.on('pointerdown',()=>{this.touch[key]=true;});
-     b.on('pointerup',()=>{this.touch[key]=false;});
-     b.on('pointerout',()=>{this.touch[key]=false;});
+     // Jump/transform are one-shot inputs: a short tap can begin and end
+     // between game frames. Only direction keys should release immediately.
+     if(key==='left'||key==='right'){
+       b.on('pointerup',()=>{this.touch[key]=false;});
+       b.on('pointerout',()=>{this.touch[key]=false;});
+       b.on('pointerupoutside',()=>{this.touch[key]=false;});
+     }
      return b;
    };
    make(102,621,'◀','left');
