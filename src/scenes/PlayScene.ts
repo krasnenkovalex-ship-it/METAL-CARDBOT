@@ -53,8 +53,6 @@ export class PlayScene extends Phaser.Scene{
  private gate(x:number):Phaser.GameObjects.Rectangle{
    this.add.rectangle(x,439,120,25,0xffde73).setDepth(7);
    const pillar=this.add.rectangle(x,530,84,151,0x1a4269).setStrokeStyle(5,0x7beaff).setDepth(7);
-   this.add.rectangle(x-23,531,11,122,0x4bcfff).setDepth(8);
-   this.add.rectangle(x+23,531,11,122,0x4bcfff).setDepth(8);
    this.physics.add.existing(pillar,true);
    this.physics.add.collider(this.player,pillar);
    return pillar;
@@ -68,6 +66,7 @@ export class PlayScene extends Phaser.Scene{
  }
  private beginPuzzle(id:Mission):void{
    this.puzzleLocked=id;
+   this.touch={left:false,right:false,jump:false,transform:false};
    this.player.setVelocity(0,0);
    audio.effect('task');
    this.scene.pause();
@@ -92,17 +91,17 @@ export class PlayScene extends Phaser.Scene{
  private makeMobileControls():void{
    if(!window.matchMedia('(pointer:coarse)').matches)return;
    const make=(x:number,y:number,label:string,key:keyof typeof this.touch,color=0x0b4268)=>{
-     const b=this.add.circle(x,y,46,color,.72).setStrokeStyle(3,0x9bebff,.8).setScrollFactor(0).setDepth(90).setInteractive();
+     const b=this.add.circle(x,y,68,color,.72).setStrokeStyle(3,0x9bebff,.8).setScrollFactor(0).setDepth(90).setInteractive();
      this.add.text(x,y,label,{fontSize:'37px',fontStyle:'bold',color:'#ffffff'}).setOrigin(.5).setScrollFactor(0).setDepth(91);
      b.on('pointerdown',()=>{this.touch[key]=true;});
      b.on('pointerup',()=>{this.touch[key]=false;});
      b.on('pointerout',()=>{this.touch[key]=false;});
      return b;
    };
-   make(78,632,'◀','left');
-   make(183,632,'▶','right');
-   make(1090,626,'↥','jump',0x355b8e);
-   make(1200,626,'⇄','transform',0x78622e);
+   make(102,621,'◀','left');
+   make(274,621,'▶','right');
+   make(1010,621,'↥','jump',0x355b8e);
+   make(1184,621,'⇄','transform',0x78622e);
  }
  create(){
    this.completed.clear();this.waitForExit.clear();
@@ -129,8 +128,8 @@ export class PlayScene extends Phaser.Scene{
    this.bridgeBody.refreshBody().disableBody(true,true);
    this.physics.add.collider(this.player,this.bridgeBody);
    // The raised shortcut holds a collectible that takes a deliberate jump.
-   const high=this.physics.add.staticImage(2170,475,'platform-physics').setDisplaySize(330,45).refreshBody().setVisible(false);
-   this.add.tileSprite(2170,478,330,66,'terrain').setDepth(5);
+   const high=this.physics.add.staticImage(2170,492,'platform-physics').setDisplaySize(330,45).refreshBody().setVisible(false);
+   this.add.tileSprite(2170,495,330,66,'terrain').setDepth(5);
    this.physics.add.collider(this.player,high);
    const high2=this.physics.add.staticImage(3410,479,'platform-physics').setDisplaySize(230,44).refreshBody().setVisible(false);
    this.add.tileSprite(3410,479,230,65,'terrain').setDepth(5);
@@ -141,7 +140,7 @@ export class PlayScene extends Phaser.Scene{
    this.terminal(2430,'ЗАДАНИЕ 2');
    this.gate1=this.gate(1770);
    this.gate2=this.gate(2740);
-   for(const pos of [[650,490],[1650,486],[2170,392],[3120,492]] as const)this.energy(pos[0],pos[1]);
+   for(const pos of [[650,490],[1650,486],[2170,417],[3120,492]] as const)this.energy(pos[0],pos[1]);
    for(const x of [580,1850,3140]){
      const sign=this.add.text(x,521,'➜',{fontFamily:'system-ui',fontSize:'58px',color:'#ffea8e',stroke:'#135778',strokeThickness:6}).setDepth(7);
      this.tweens.add({targets:sign,x:x+17,duration:700,yoyo:true,repeat:-1});
