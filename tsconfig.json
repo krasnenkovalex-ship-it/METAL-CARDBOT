@@ -12,6 +12,7 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "types": [
       "vite/client"
     ]
@@ -20,3 +21,4 @@
     "src/**/*.ts"
   ]
 }
+

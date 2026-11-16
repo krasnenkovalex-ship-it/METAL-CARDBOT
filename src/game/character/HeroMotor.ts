@@ -45,6 +45,13 @@ export class HeroMotor {
     this.transformTimeLeft=0;this.grounded=true;
     this.coyoteTime=0;this.jumpBuffer=0;
   }
+  setHorizontalPosition(x:number,z:number):void{this.x=x;this.z=z;}
+  teleport(x:number,z:number):void{
+    this.x=x;this.z=z;this.y=this.floor;
+    this.vx=0;this.vz=0;this.vy=0;
+    this.grounded=true;this.coyoteTime=0;this.jumpBuffer=0;
+    this.transformTimeLeft=0;this.nextForm=this.form;
+  }
   update(dt:number, input:HeroIntent=zero, blocked=false):HeroPose{
     const step=Math.max(0,Math.min(.05,dt));
     if(blocked)return this.pose;

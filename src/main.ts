@@ -62,6 +62,7 @@ let started=false;
 let puzzleOpen=false;
 let finished=false;
 let elapsed=0;
+let lastProgressTime=0;
 let lastStep=0;
 let wasGrounded=true;
 const cameraLook=new pc.Vec3(0,1.5,0);
@@ -133,8 +134,9 @@ function finishCircuit():void{
   world.openGate();trigger.close(true);
   objective.textContent='Собери три энергоячейки';
   audio.effect('gate');
-  announce('Отлично! Ворота раздвигаются и открывают новый путь!',5500);
-  speak('Ты справился! Ворота открылись. Найди три энергетических кристалла.');
+  lastProgressTime=elapsed;
+  announce('Отлично! Ворота открываются. Обойди реактор и выбери тропу!',5500);
+  speak('Ты справился! Обойди реактор, пройди через ворота и найди три кристалла.');
   window.setTimeout(()=>{puzzlePanel.classList.add('hidden');puzzleOpen=false;keyboard.clear();touch.clear();},1050);
 }
 el<HTMLButtonElement>('hint').addEventListener('click',()=>{
@@ -175,28 +177,50 @@ app.on('update',(rawDt:number)=>{
   // Keep simulation time in step with wall time when software WebGL drops frames.
   const dt=Math.min(.5,Math.max(0,rawDt));
   elapsed+=dt;
-  const input=mergeInputs(keyboard.read(),touch.read());
+  let input=mergeInputs(keyboard.read(),touch.read());
+  if(input.transformPressed){
+    const current=motor.pose;
+    const target=current.form==='robot'?'vehicle':'robot';
+    if(!world.canTransformAt({x:current.x,z:current.z},target)){
+      input={...input,transformPressed:false};
+      announce('Здесь тесно для трансформации. Отойди от препятствия.',2700);
+      audio.effect('wrong');
+    }
+  }
   const wasTransforming=motor.pose.transforming;
   const oldForm=motor.pose.form;
   let remaining=dt;
   let firstStep=true;
   let found=0;
+  let foundSecret=false;
+  let checkpointHit:string|null=null;
+  let bridgeStarted=false;
+  let recovered=false;
   let reachedPortal=false;
   while(remaining>0){
     const step=Math.min(.05,remaining);
+    const before=motor.pose;
     motor.update(step,firstStep?input:{...input,jumpPressed:false,transformPressed:false},puzzleOpen);
-    // Check interactions at each simulation position so a slow frame cannot skip them.
-    if(!world.gatePassable)motor.constrain(-8,8,-8.6,12);
-    else motor.constrain(-8,8,-30,12);
+    const moved=motor.pose;
+    const resolved=world.resolveMovement({x:before.x,z:before.z},{x:moved.x,z:moved.z},moved.form);
+    motor.setHorizontalPosition(resolved.x,resolved.z);
+    const unsafe=world.recoverIfUnsafe(resolved,moved.y,moved.form);
+    if(unsafe){motor.teleport(unsafe.x,unsafe.z);recovered=true;}
     const at=motor.pose;
+    bridgeStarted=world.requestBridge(at.x,at.z)||bridgeStarted;
     if(trigger.update(at.x,at.z,step,!puzzleOpen&&at.grounded&&!at.transforming))openCircuit();
     found+=world.collect(at.x,at.z);
+    foundSecret=world.collectSecret(at.x,at.z)||foundSecret;
+    checkpointHit=world.visitCheckpoint(at)||checkpointHit;
     reachedPortal=world.isAtPortal(at.x,at.z);
     remaining-=step;
     firstStep=false;
     if(reachedPortal)break;
   }
   const pose=motor.pose;
+  canvas.dataset.playerX=pose.x.toFixed(2);
+  canvas.dataset.playerZ=pose.z.toFixed(2);
+  canvas.dataset.checkpoint=world.checkpoint;
   hero.update(pose,elapsed);
   if(!wasGrounded&&pose.grounded)audio.effect('land');
   wasGrounded=pose.grounded;
@@ -210,17 +234,39 @@ app.on('update',(rawDt:number)=>{
     announce(pose.form==='vehicle'?'Трансформация завершена! Машина едет быстрее!':'Робот вернулся! Теперь можно прыгать.',2900);
   }
   const cp=camera.getPosition();
-  const desiredY=pose.form==='vehicle'?5.1:6.2;
+  const desiredY=pose.form==='vehicle'?4.7:5.7;
   const t=1-Math.exp(-dt*4.2);
-  camera.setPosition(pc.math.lerp(cp.x,pose.x,t),pc.math.lerp(cp.y,desiredY,t),pc.math.lerp(cp.z,pose.z+9.7,t));
+  const candidate={x:pc.math.lerp(cp.x,pose.x,t),z:pc.math.lerp(cp.z,pose.z+7.4,t)};
+  const cameraSafe=world.clipCamera({x:pose.x,z:pose.z},candidate);
+  camera.setPosition(cameraSafe.x,pc.math.lerp(cp.y,desiredY,t),cameraSafe.z);
   const focusY=pose.form==='vehicle'?.7:1.5;
   cameraLook.set(pc.math.lerp(cameraLook.x,pose.x,t),pc.math.lerp(cameraLook.y,focusY,t),pc.math.lerp(cameraLook.z,pose.z-2.1,t));
   camera.lookAt(cameraLook);
   world.update(elapsed,dt);
+  if(recovered){
+    announce('Вернулись к безопасной точке. Всё собранное сохранено!',3500);
+    audio.effect('land');
+  }
+  if(bridgeStarted){
+    announce('Мост поднимается! Подожди, пока он соединит берега.',3700);
+    speak('Мост поднимается. Скоро можно будет проехать!');
+    lastProgressTime=elapsed;
+  }
+  if(checkpointHit){
+    announce('Новая безопасная точка! ⭐',2400);
+    lastProgressTime=elapsed;
+  }
+  if(foundSecret){
+    audio.effect('pickup');
+    progress.textContent='⚡ '+world.collectedCount+' / 3 · ★';
+    announce('Секретная звезда найдена! ⭐',3200);
+    lastProgressTime=elapsed;
+  }
   if(found){
     audio.effect('pickup');
-    progress.textContent='⚡ '+world.collectedCount+' / 3';
+    progress.textContent='⚡ '+world.collectedCount+' / 3'+(world.secretFound?' · ★':'');
     announce('Кристалл найден! Уже '+world.collectedCount+' из 3.',2800);
+    lastProgressTime=elapsed;
     if(world.completed){
       objective.textContent='Доберись до светящегося портала!';
       speak('Отлично! Все три кристалла собраны. Найди сияющий портал.');
@@ -230,6 +276,9 @@ app.on('update',(rawDt:number)=>{
     finished=true;victory.classList.remove('hidden');
     audio.effect('victory');
     speak('Миссия выполнена! Ты помог Технолесу. Молодец!');
+  }
+  if(!puzzleOpen&&!finished&&elapsed-lastProgressTime>38){
+    const hint=world.hint();announce('💡 '+hint,5100);speak(hint);lastProgressTime=elapsed;
   }
 });
 window.addEventListener('resize',()=>app.resizeCanvas());
