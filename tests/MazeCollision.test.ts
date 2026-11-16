@@ -47,6 +47,12 @@ test('right bridge is blocked until its planks have risen',()=>{
   const stopped=maze.move({x:4.2,z:-15.2},{x:4.2,z:-18.2},'robot',true,false);
   assert.ok(stopped.z>-16.55);
 });
+test('vehicle can follow the inner east lane around the rock to the final beacon',()=>{
+  const path=[{x:3.65,z:-11.8},{x:3.65,z:-14.7},{x:3.65,z:-21}];
+  const end=travel(path,'vehicle',true);
+  assert.ok(Math.hypot(end.x-4.2,end.z+21)<1.5);
+  assert.equal(maze.canOccupy({x:4.9,z:-14.7},maze.radius('vehicle'),true),false);
+});
 test('secret spur contains a reachable reward and returns to the main branch',()=>{
   for(const form of ['robot','vehicle'] as const){
     travel([{x:-4.2,z:-14.2},{x:-6.4,z:-14.2},TECH_FOREST.secret,{x:-6.4,z:-14.2},{x:-4.2,z:-14.2}],form,true);

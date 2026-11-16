@@ -93,7 +93,9 @@ test('all ten story missions are playable in one browser session',async({page},t
   await chapter(page,'Дорога домой');
   await page.keyboard.press('e');
   await expect(page.locator('#form')).toHaveText('🚓 Машина',{timeout:12000});
-  await moveAxis(page,'x',4.2);
+  // Keep the vehicle on the inner half of the bridge. A wide input pulse can
+  // otherwise leave it next to the east rock at x=5.75, z=-14.7.
+  await moveAxis(page,'x',3.65);
   await moveAxis(page,'z',-21);
   await expect(page.locator('#game')).toHaveAttribute('data-mission-progress','1');
   await page.keyboard.press('e');
