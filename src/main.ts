@@ -1,176 +1,200 @@
 import * as pc from 'playcanvas';
 import '../style.css';
-import { ProximityTrigger } from './game/interaction/ProximityTrigger';
-import { firstPuzzle } from './game/education/levelOne';
-import {HeroMotor} from './game/character/HeroMotor';
-import {CharacterModels} from './game/character/CharacterModels';
+import {ProximityTrigger} from './game/interaction/ProximityTrigger';
+import {ColorCircuit,WIRE_COLORS,type WireColor} from './game/education/ColorCircuit';
+import {HeroMotor,type HeroIntent} from './game/character/HeroMotor';
+import {AnimatedHero} from './game/character/AnimatedHero';
 import {PhysicalKeyboard} from './game/input/PhysicalKeyboard';
+import {TouchController} from './game/input/TouchController';
+import {ForestWorld} from './game/world/ForestWorld';
+import {SynthSoundtrack} from './game/audio/SynthSoundtrack';
 
-// Technical test scene only. Final hero, forest and puzzles require authored assets.
-function requireElement<T extends HTMLElement>(selector:string):T{
-  const result=document.querySelector<T>(selector);
-  if(!result) throw new Error('Missing element: '+selector);
-  return result;
+function el<T extends HTMLElement>(id:string):T{
+  const found=document.getElementById(id);
+  if(!found)throw new Error('Missing element '+id);
+  return found as T;
 }
-const canvas=requireElement<HTMLCanvasElement>('#game');
-const objective=requireElement<HTMLElement>('#objective');
-const menu=requireElement<HTMLElement>('#menu');
-const puzzleModal=requireElement<HTMLElement>('#puzzle');
-const puzzleTitle=requireElement<HTMLElement>('#puzzle-title');
-const question=requireElement<HTMLElement>('#question');
-const answers=requireElement<HTMLElement>('#answers');
-const feedback=requireElement<HTMLElement>('#feedback');
+const canvas=el<HTMLCanvasElement>('game');
+const objective=el<HTMLElement>('objective');
+const progress=el<HTMLElement>('progress');
+const menu=el<HTMLElement>('menu');
+const puzzlePanel=el<HTMLElement>('puzzle');
+const victory=el<HTMLElement>('win');
+const feedback=el<HTMLElement>('feedback');
+const story=el<HTMLElement>('story');
+const wires=el<HTMLElement>('wires');
+const sockets=el<HTMLElement>('sockets');
+const circuitProgress=el<HTMLElement>('circuit-progress');
 
 const app=new pc.Application(canvas);
 app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
 app.setCanvasResolution(pc.RESOLUTION_AUTO);
-
-const camera=new pc.Entity('camera');
-camera.addComponent('camera',{clearColor:new pc.Color(.50,.73,.92),nearClip:.1,farClip:130});
+app.scene.ambientLight=new pc.Color(.65,.72,.81);
+const camera=new pc.Entity('follow-camera');
+camera.addComponent('camera',{clearColor:new pc.Color(.54,.77,.91),nearClip:.15,farClip:125,fov:56});
 app.root.addChild(camera);
-camera.setPosition(0,7,14);
-camera.lookAt(0,1,-2);
-
+camera.setPosition(0,6.2,18);
+camera.lookAt(0,1,0);
 const sun=new pc.Entity('sun');
-sun.addComponent('light',{type:'directional',intensity:1.6,color:new pc.Color(1,.95,.8),castShadows:false});
-sun.setEulerAngles(45,35,0);app.root.addChild(sun);
-const ambient=new pc.Entity('ambient-fill');
-ambient.addComponent('light',{type:'omni',intensity:.85,range:40,color:new pc.Color(.65,.8,1)});
-ambient.setPosition(0,8,3);app.root.addChild(ambient);
+sun.addComponent('light',{type:'directional',intensity:1.8,color:new pc.Color(1,.91,.72),castShadows:false});
+sun.setEulerAngles(52,35,0);app.root.addChild(sun);
+const fill=new pc.Entity('fill');
+fill.addComponent('light',{type:'omni',intensity:.38,range:25,color:new pc.Color(.61,.83,1)});
+fill.setPosition(0,6,-2);app.root.addChild(fill);
 
-type PrimitiveKind='box'|'sphere'|'cylinder';
-function make(name:string,kind:PrimitiveKind,rgb:[number,number,number],pos:[number,number,number],scale:[number,number,number]):pc.Entity{
-  const entity=new pc.Entity(name);
-  entity.addComponent('render',{type:kind});
-  const material=new pc.StandardMaterial();
-  material.diffuse=new pc.Color(...rgb);
-  material.update();
-  if(entity.render) entity.render.material=material;
-  entity.setPosition(...pos);
-  entity.setLocalScale(...scale);
-  app.root.addChild(entity);
-  return entity;
-}
-
-make('ground','box',[.24,.53,.34],[0,-.35,-2],[42,.6,42]);
-for(let i=0;i<36;i++){
-  const angle=i*2.399963;
-  const radius=8+Math.sqrt(i)*1.55;
-  const x=Math.cos(angle)*radius;
-  const z=Math.sin(angle)*radius-3;
-  if(Math.abs(x)<3 && z<7 && z>-15) continue;
-  make('tree-trunk-'+i,'cylinder',[.38,.22,.12],[x,1.4,z],[.5,2.8,.5]);
-  make('tree-crown-'+i,'sphere',[.19+(i%3)*.04,.44+(i%4)*.03,.26],[x,3.25,z],[2.2,2.4,2.2]);
-}
-const reactor=make('learning-station','sphere',[.15,.85,1],[0,1.4,-5],[1.25,1.25,1.25]);
-make('station-base','cylinder',[.37,.54,.63],[0,.3,-5],[2.4,.6,2.4]);
-make('gate-left','box',[.33,.48,.73],[-3,1.8,-12],[.8,3.6,.7]);
-make('gate-right','box',[.33,.48,.73],[3,1.8,-12],[.8,3.6,.7]);
-make('gate-top','box',[.35,.65,.83],[0,3.6,-12],[6.8,.7,.7]);
-const gate=make('gate-lock','box',[.85,.28,.25],[0,1.55,-12],[5.3,3,.25]);
-// This BLOCKOUT must be replaced with an original licensed 3D robot.
-const hero=make('temporary-hero','box',[.18,.40,.92],[0,.9,4],[.95,1.8,.75]);
-const heroHead=make('hero-head','box',[.70,.81,.93],[0,2.03,4],[.66,.55,.65]);
-const carBlockout=make('temporary-car','box',[.13,.34,.82],[0,.65,4],[1.3,.8,2]);
-carBlockout.enabled=false;
-const heroAnchor=new pc.Entity('hero-anchor');
-app.root.addChild(heroAnchor);
-const models=new CharacterModels(app,heroAnchor);
+const world=new ForestWorld(app);
+const hero=new AnimatedHero(app);
 const motor=new HeroMotor();
+motor.reset(0,9);
 const keyboard=new PhysicalKeyboard();
-let authoredModelsReady=false;
-// The polished Blue Cop pair is supplied later in M1, after asset/rights review.
-// Until then the engineering scene deliberately uses clearly labeled stand-ins.
-void models.loadPair().then(ready=>{
-  authoredModelsReady=ready;
-  if(ready){
-    hero.enabled=false;
-    heroHead.enabled=false;
-    carBlockout.enabled=false;
-  }
-});
-
-const trigger=new ProximityTrigger('energy-gate-01',0,-5,2.4,3.2,.28);
+const touch=new TouchController(el('touch'));
+const audio=new SynthSoundtrack();
+const trigger=new ProximityTrigger('energy-gate',world.stationX,world.stationZ,2.5,3.45,.3);
+const circuit=new ColorCircuit();
+let selected:WireColor|null=null;
 let started=false;
-let taskOpen=false;
+let puzzleOpen=false;
+let finished=false;
 let elapsed=0;
+let storyTimer:number|null=null;
 
-function openPuzzle():void{
-  taskOpen=true;
-  keyboard.clear();
-  puzzleTitle.textContent=firstPuzzle.title;
-  question.textContent=firstPuzzle.prompt;
-  feedback.textContent='';
-  answers.replaceChildren();
-  for(const choice of firstPuzzle.choices){
-    const button=document.createElement('button');
-    button.type='button';
-    button.textContent=choice.label;
-    button.addEventListener('click',()=>{
-      if(choice.value===firstPuzzle.answer){
-        feedback.textContent=firstPuzzle.success;
-        gate.enabled=false;
-        reactor.setLocalScale(1.7,1.7,1.7);
-        objective.textContent='Ворота открылись — путь свободен!';
-        trigger.close(true);
-        window.setTimeout(()=>{puzzleModal.classList.add('hidden');taskOpen=false;},800);
-      }else{
-        feedback.textContent=firstPuzzle.hint;
-      }
-    });
-    answers.append(button);
-  }
-  puzzleModal.classList.remove('hidden');
+function announce(message:string,duration=3900):void{
+  if(storyTimer!==null)window.clearTimeout(storyTimer);
+  story.textContent=message;story.classList.add('visible');
+  storyTimer=window.setTimeout(()=>{story.classList.remove('visible');storyTimer=null;},duration);
 }
-requireElement<HTMLButtonElement>('#cancel').addEventListener('click',()=>{
-  puzzleModal.classList.add('hidden');
-  taskOpen=false;
-  trigger.close(false);
+function speak(message:string):void{
+  if(!('speechSynthesis' in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(message);
+    u.lang='ru-RU';u.rate=.92;u.pitch=1;u.volume=.7;
+    window.speechSynthesis.speak(u);
+  }catch{/* voice is optional */}
+}
+const labelOf=(color:WireColor):string=>color==='red'?'🔴 Красный':color==='yellow'?'🟡 Жёлтый':'🔵 Синий';
+
+function renderCircuit():void{
+  wires.replaceChildren();sockets.replaceChildren();
+  for(const color of WIRE_COLORS){
+    const b=document.createElement('button');
+    b.type='button';b.dataset.color=color;b.className='wire';
+    b.textContent=circuit.isConnected(color)?'✓ '+labelOf(color):labelOf(color);
+    if(selected===color)b.classList.add('selected');
+    if(circuit.isConnected(color))b.classList.add('connected');
+    b.disabled=circuit.isConnected(color);
+    b.addEventListener('click',()=>{
+      selected=color;
+      feedback.textContent='А теперь найди такой же цвет справа!';
+      renderCircuit();
+    });
+    wires.append(b);
+  }
+  for(const color of ['yellow','red','blue'] as WireColor[]){
+    const b=document.createElement('button');
+    b.type='button';b.dataset.color=color;b.className='wire';
+    b.textContent=circuit.isConnected(color)?'✓ Подключено':labelOf(color);
+    if(circuit.isConnected(color))b.classList.add('connected');
+    b.disabled=circuit.isConnected(color);
+    b.addEventListener('click',()=>{
+      if(!selected){feedback.textContent='Сначала выбери провод слева!';return;}
+      const result=circuit.connect(selected,color);
+      feedback.textContent=result.message;
+      audio.effect(result.correct?'correct':'wrong');
+      if(result.correct)selected=null;
+      renderCircuit();
+      if(result.completed)finishCircuit();
+    });
+    sockets.append(b);
+  }
+  circuitProgress.textContent='Подключено '+circuit.connected+' из 3';
+}
+function openCircuit():void{
+  if(puzzleOpen||finished||circuit.completed)return;
+  puzzleOpen=true;keyboard.clear();selected=null;
+  feedback.textContent='Найди одинаковые цвета!';
+  renderCircuit();puzzlePanel.classList.remove('hidden');
+  announce('Энергомост выключен! Соедини три провода.');
+  speak('Перед нами энергомост! Выбирай провод слева и подходящий разъём справа.');
+}
+function finishCircuit():void{
+  world.openGate();trigger.close(true);
+  objective.textContent='Собери три энергоячейки';
+  audio.effect('victory');
+  announce('Отлично! Ворота раздвигаются и открывают новый путь!',5500);
+  speak('Ты справился! Ворота открылись. Найди три энергетических кристалла.');
+  window.setTimeout(()=>{puzzlePanel.classList.add('hidden');puzzleOpen=false;},1050);
+}
+el<HTMLButtonElement>('hint').addEventListener('click',()=>{
+  feedback.textContent='Выбирай один цвет слева и точно такой же цвет справа.';
+  speak('Посмотри на цвета! Найди пару одного цвета.');
 });
-requireElement<HTMLButtonElement>('#start').addEventListener('click',()=>{
+el<HTMLButtonElement>('cancel').addEventListener('click',()=>{
+  puzzlePanel.classList.add('hidden');puzzleOpen=false;selected=null;
+  trigger.close(false);
+  announce('К станции можно вернуться позже.');
+});
+el<HTMLButtonElement>('start').addEventListener('click',()=>{
   if(started)return;
-  started=true;
-  menu.classList.add('hidden');
-  objective.textContent='Иди к голубому реактору';
+  started=true;menu.classList.add('hidden');
+  void audio.start().catch(()=>{/* audio may be restricted by browser */});
+  announce('Блю Коп готов! Иди к светящемуся реактору в лесу.',5000);
+  speak('Вперёд, герой! Нам нужно включить энергомост. Подойди к светящейся станции.');
   app.start();
 });
+el<HTMLButtonElement>('replay').addEventListener('click',()=>window.location.reload());
+let muted=false;
+el<HTMLButtonElement>('mute').addEventListener('click',()=>{
+  muted=!muted;audio.setEnabled(!muted);
+  el<HTMLButtonElement>('mute').textContent=muted?'♪':'♫';
+  el<HTMLButtonElement>('mute').setAttribute('aria-label',muted?'Включить музыку':'Выключить музыку');
+});
+// Licensed GLB models can be enabled later without changing the motor/controller.
+if(import.meta.env.VITE_ENABLE_CHARACTER_GLB==='true')void hero.loadLicensedAssets();
 
+function mergeInputs(a:HeroIntent,b:HeroIntent):HeroIntent{
+  return {forward:a.forward||b.forward,back:a.back||b.back,left:a.left||b.left,
+    right:a.right||b.right,jumpPressed:a.jumpPressed||b.jumpPressed,
+    transformPressed:a.transformPressed||b.transformPressed};
+}
 app.on('update',(rawDt:number)=>{
-  if(!started)return;
-  const dt=Math.min(rawDt,.05);
+  if(!started||finished)return;
+  const dt=Math.min(.05,Math.max(0,rawDt));
   elapsed+=dt;
-  const input=keyboard.read();
-  motor.update(dt,input,taskOpen);
-  const next=motor.pose;
-  if(!taskOpen){
-    if(trigger.status!=='complete' && next.z < -11 && Math.abs(next.x)<3.6){
-      motor.constrain(-14,14,-11,14);
-    }else{
-      motor.constrain(-14,14,-17,14);
+  const input=mergeInputs(keyboard.read(),touch.read());
+  const wasTransforming=motor.pose.transforming;
+  const oldForm=motor.pose.form;
+  motor.update(dt,input,puzzleOpen);
+  // The closed gate blocks the first path, without resetting earned progress.
+  if(!world.gateOpen)motor.constrain(-8,8,-8.6,12);
+  else motor.constrain(-8,8,-30,12);
+  const pose=motor.pose;
+  hero.update(pose,elapsed);
+  if(!wasTransforming&&pose.transforming)audio.effect('transform');
+  if(wasTransforming&&!pose.transforming&&oldForm!==pose.form){
+    announce(pose.form==='vehicle'?'Трансформация завершена! Машина едет быстрее!':'Робот вернулся! Теперь можно прыгать.',2900);
+  }
+  const cp=camera.getPosition();
+  const desiredY=pose.form==='vehicle'?5.1:6.2;
+  const t=1-Math.exp(-dt*4.2);
+  camera.setPosition(pc.math.lerp(cp.x,pose.x,t),pc.math.lerp(cp.y,desiredY,t),pc.math.lerp(cp.z,pose.z+9.7,t));
+  camera.lookAt(pose.x,pose.form==='vehicle'?.7:1.5,pose.z-2.1);
+  world.update(elapsed,dt);
+  if(trigger.update(pose.x,pose.z,dt,!puzzleOpen&&pose.grounded&&!pose.transforming))openCircuit();
+  const found=world.collect(pose.x,pose.z);
+  if(found){
+    audio.effect('pickup');
+    progress.textContent='⚡ '+world.collectedCount+' / 3';
+    announce('Кристалл найден! Уже '+world.collectedCount+' из 3.',2800);
+    if(world.completed){
+      objective.textContent='Доберись до светящегося портала!';
+      speak('Отлично! Все три кристалла собраны. Найди сияющий портал.');
     }
   }
-  const pose=motor.pose;
-  models.apply(pose,elapsed);
-  if(!authoredModelsReady){
-    const isCar=pose.form==='vehicle';
-    hero.enabled=!isCar;heroHead.enabled=!isCar;
-    carBlockout.enabled=isCar;
-    hero.setPosition(pose.x,pose.y,pose.z);
-    heroHead.setPosition(pose.x,pose.y+1.13,pose.z);
-    carBlockout.setPosition(pose.x,pose.y-.25,pose.z);
-    const facing=pose.heading*180/Math.PI;
-    hero.setEulerAngles(0,facing,0);
-    heroHead.setEulerAngles(0,facing,0);
-    carBlockout.setEulerAngles(0,facing,0);
+  if(world.isAtPortal(pose.x,pose.z)){
+    finished=true;victory.classList.remove('hidden');
+    audio.effect('victory');
+    speak('Миссия выполнена! Ты помог Технолесу. Молодец!');
   }
-  if(trigger.update(pose.x,pose.z,dt,!taskOpen && pose.grounded && !pose.transforming))openPuzzle();
-  const cp=camera.getPosition();
-  const blend=Math.min(1,dt*4.5);
-  camera.setPosition(
-    cp.x+(pose.x-cp.x)*blend,
-    7,
-    cp.z+(pose.z+10-cp.z)*blend
-  );
-  camera.lookAt(pose.x,1.3,pose.z-2);
-  reactor.rotate(0,dt*55,0);
 });
+window.addEventListener('resize',()=>app.resizeCanvas());
