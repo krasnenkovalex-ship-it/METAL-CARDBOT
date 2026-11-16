@@ -1,6 +1,8 @@
-asset_id,type,status,source,license,game_use,promo_use
-hero_robot,3d-model,PLANNED,original-commission,not-yet-granted,no,no
-hero_vehicle,3d-model,PLANNED,original-commission,not-yet-granted,no,no
-forest_kit,environment,PLANNED,original-commission,not-yet-granted,no,no
-puzzle_sfx,audio,PLANNED,original-or-cleared,not-yet-granted,no,no
-level_music,audio,PLANNED,original-composition,not-yet-granted,no,no
+asset_id,type,status,creator,rights_owner,source,license_scope,game_use,promo_use
+procedural_hero,3d-code,IN_USE,repository contributors,unconfirmed,src/game/character/AnimatedHero.ts,original code with franchise-inspired design,yes,no
+procedural_forest,3d-code,IN_USE,repository contributors,unconfirmed,src/game/world/ForestWorld.ts,original code,yes,no
+synth_music_sfx,audio-code,IN_USE,repository contributors,unconfirmed,src/game/audio/SynthSoundtrack.ts,original synthesis without samples,yes,no
+hero_robot_glb,3d-model,PLANNED,not assigned,unconfirmed,original commission,not yet granted,no,no
+hero_vehicle_glb,3d-model,PLANNED,not assigned,unconfirmed,original commission,not yet granted,no,no
+forest_kit,environment,PLANNED,not assigned,unconfirmed,original commission,not yet granted,no,no
+

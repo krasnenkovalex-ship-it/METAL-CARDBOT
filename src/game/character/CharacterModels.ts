@@ -50,8 +50,9 @@ export class CharacterModels {
   }
   apply(pose:HeroPose,time:number):void{
     this.anchor.setPosition(pose.x,pose.y,pose.z);
-    this.modelRoot.setLocalEulerAngles(0,pose.heading*180/Math.PI,0);
-    this.setForm(pose.form);
+    // The shared anchor already receives the heading from AnimatedHero.
+    this.modelRoot.setLocalEulerAngles(0,0,0);
+    this.setForm(pose.transforming&&pose.transformProgress>.5?pose.targetForm:pose.form);
     // Tiny idle bounce is temporary. Real animation clips replace this in M1.
     const bob=pose.transforming?0:pose.form==='robot'&&pose.moving?Math.sin(time*12)*.015:0;
     this.modelRoot.setLocalPosition(0,bob,0);
@@ -59,3 +60,4 @@ export class CharacterModels {
     this.modelRoot.setLocalScale(s,s,s);
   }
 }
+

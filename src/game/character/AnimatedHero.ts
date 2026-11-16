@@ -16,9 +16,10 @@ export class AnimatedHero {
  private readonly robot=new pc.Entity('robot-form');
  private readonly vehicle=new pc.Entity('car-form');
  private readonly glb:CharacterModels;
- private readonly parts:pc.Entity[]=[];
- private readonly joints:{leftArm:pc.Entity;rightArm:pc.Entity;leftLeg:pc.Entity;rightLeg:pc.Entity};
+ private readonly joints:{leftArm:pc.Entity;rightArm:pc.Entity;leftElbow:pc.Entity;rightElbow:pc.Entity;leftLeg:pc.Entity;rightLeg:pc.Entity;leftKnee:pc.Entity;rightKnee:pc.Entity};
  private readonly wheels:pc.Entity[]=[];
+ private readonly transformGlow:pc.Entity;
+ private previousElapsed=0;
  private assetReady=false;
  private readonly materials=new Map<ColorKey,pc.StandardMaterial>();
  constructor(private readonly app:pc.Application){
@@ -41,11 +42,18 @@ export class AnimatedHero {
    }
    this.buildRobot();
    this.buildVehicle();
+   this.transformGlow=this.part(this.root,'transformation-energy','cylinder','cyan',[0,-.86,0],[1.5,.04,1.5]);
+   if(this.transformGlow.render)this.transformGlow.render.castShadows=false;
+   this.transformGlow.enabled=false;
    this.joints={
       leftArm:this.robot.findByName('left-arm-pivot') as pc.Entity,
       rightArm:this.robot.findByName('right-arm-pivot') as pc.Entity,
+      leftElbow:this.robot.findByName('left-elbow-pivot') as pc.Entity,
+      rightElbow:this.robot.findByName('right-elbow-pivot') as pc.Entity,
       leftLeg:this.robot.findByName('left-leg-pivot') as pc.Entity,
-      rightLeg:this.robot.findByName('right-leg-pivot') as pc.Entity
+      rightLeg:this.robot.findByName('right-leg-pivot') as pc.Entity,
+      leftKnee:this.robot.findByName('left-knee-pivot') as pc.Entity,
+      rightKnee:this.robot.findByName('right-knee-pivot') as pc.Entity
    };
  }
  private group(parent:pc.Entity,name:string,pos:P):pc.Entity{
@@ -60,7 +68,6 @@ export class AnimatedHero {
    if(entity.render)entity.render.material=this.materials.get(color)!;
    entity.setLocalScale(...size);
    if(rotation)entity.setLocalEulerAngles(...rotation);
-   this.parts.push(entity);
    return entity;
  }
  private buildRobot():void{
@@ -73,11 +80,12 @@ export class AnimatedHero {
    for(const [name,x] of legs){
      const pivot=this.group(b,name+'-leg-pivot',[x,-.22,0]);
      p(pivot,'thigh-'+name,'box','deep',[0,-.20,0],[.29,.48,.36]);
-     p(pivot,'knee-'+name,'sphere','gold',[0,-.40,-.09],[.34,.24,.39]);
-     p(pivot,'shin-'+name,'box','blue',[0,-.52,-.03],[.33,.43,.42]);
-     p(pivot,'shin-ridge-'+name,'box','white',[0,-.53,-.27],[.21,.29,.10]);
-     p(pivot,'boot-'+name,'box','metal',[0,-.78,-.13],[.40,.20,.65]);
-     p(pivot,'boot-toe-'+name,'box','gold',[0,-.77,-.45],[.36,.13,.15]);
+     const knee=this.group(pivot,name+'-knee-pivot',[0,-.40,-.09]);
+     p(knee,'knee-'+name,'sphere','gold',[0,0,0],[.34,.24,.39]);
+     p(knee,'shin-'+name,'cylinder','blue',[0,-.13,.06],[.31,.42,.36]);
+     p(knee,'shin-ridge-'+name,'box','white',[0,-.13,-.23],[.21,.29,.10]);
+     p(knee,'boot-'+name,'sphere','metal',[0,-.38,-.04],[.40,.20,.65]);
+     p(knee,'boot-toe-'+name,'sphere','gold',[0,-.38,-.34],[.36,.13,.22]);
    }
    p(b,'lower-chest','box','deep',[0,.15,0],[.82,.55,.58]);
    p(b,'chest-core','box','white',[0,.49,0],[1.10,.76,.67]);
@@ -91,10 +99,11 @@ export class AnimatedHero {
      const pivot=this.group(b,name+'-arm-pivot',[x,.76,0]);
      p(pivot,'pauldron-'+name,'sphere','blue',[0,-.05,0],[.53,.45,.64]);
      p(pivot,'shoulder-trim-'+name,'box','white',[0,-.08,-.26],[.33,.21,.11]);
-     p(pivot,'upper-arm-'+name,'box','metal',[0,-.32,0],[.29,.43,.34]);
-     p(pivot,'elbow-'+name,'sphere','gold',[0,-.56,0],[.28,.26,.29]);
-     p(pivot,'gauntlet-'+name,'box','blue',[0,-.70,-.05],[.36,.38,.44]);
-     p(pivot,'fist-'+name,'sphere','metal',[0,-.93,-.09],[.31,.25,.35]);
+     p(pivot,'upper-arm-'+name,'cylinder','metal',[0,-.32,0],[.29,.43,.34]);
+     const elbow=this.group(pivot,name+'-elbow-pivot',[0,-.56,0]);
+     p(elbow,'elbow-'+name,'sphere','gold',[0,0,0],[.28,.26,.29]);
+     p(elbow,'gauntlet-'+name,'sphere','blue',[0,-.14,-.05],[.36,.38,.44]);
+     p(elbow,'fist-'+name,'sphere','metal',[0,-.37,-.09],[.31,.25,.35]);
      // An integral wheel near each shoulder makes transformation readable.
      p(b,'shoulder-wheel-'+name,'cylinder','black',[x*1.36,.47,.25],[.39,.16,.39],[0,0,90]);
      p(b,'wheel-hub-'+name,'cylinder','metal',[x*1.52,.47,.25],[.20,.17,.20],[0,0,90]);
@@ -104,6 +113,8 @@ export class AnimatedHero {
    p(b,'faceplate','box','white',[0,1.11,-.27],[.42,.27,.08]);
    p(b,'visor','box','cyan',[0,1.31,-.31],[.43,.13,.09]);
    p(b,'helmet-crown','box','deep',[0,1.52,0],[.51,.16,.53]);
+   p(b,'helmet-brow','sphere','white',[0,1.46,-.18],[.51,.13,.40]);
+   p(b,'chin','sphere','metal',[0,.99,-.23],[.36,.15,.29]);
    p(b,'left-crest','cone','gold',[-.21,1.66,-.01],[.16,.36,.17]);
    p(b,'right-crest','cone','gold',[.21,1.66,-.01],[.16,.36,.17]);
  }
@@ -122,9 +133,10 @@ export class AnimatedHero {
      p(b,'side-stripe-'+side,'box','gold',[side*.78,-.38,.20],[.045,.07,1.21]);
      p(b,'side-glass-'+side,'box','glass',[side*.66,.02,.24],[.045,.24,.72]);
      for(const z of [-.77,.82]){
-       const wheel=p(b,'wheel-'+side+'-'+z,'cylinder','black',[side*.77,-.65,z],[.36,.20,.36],[0,0,90]);
-       this.wheels.push(wheel);
-       p(b,'rim-'+side+'-'+z,'cylinder','metal',[side*.91,-.65,z],[.20,.20,.20],[0,0,90]);
+       const axle=this.group(b,'axle-'+side+'-'+z,[side*.77,-.65,z]);
+       p(axle,'wheel-'+side+'-'+z,'cylinder','black',[0,0,0],[.36,.20,.36],[0,0,90]);
+       p(axle,'rim-'+side+'-'+z,'cylinder','metal',[side*.14,0,0],[.20,.20,.20],[0,0,90]);
+       this.wheels.push(axle);
      }
    }
    p(b,'left-headlight','box','cyan',[-.49,-.38,-1.18],[.32,.15,.08]);
@@ -142,25 +154,42 @@ export class AnimatedHero {
    return this.assetReady;
  }
  update(pose:HeroPose,elapsed:number):void{
+   const dt=Math.max(0,Math.min(.05,elapsed-this.previousElapsed));
+   this.previousElapsed=elapsed;
    this.root.setPosition(pose.x,pose.y,pose.z);
    this.root.setEulerAngles(0,pose.heading*180/Math.PI,0);
    this.glb.apply(pose,elapsed);
+   this.transformGlow.enabled=pose.transforming;
+   if(pose.transforming){
+     const glow=1.2+Math.sin(pose.transformProgress*Math.PI)*.9;
+     this.transformGlow.setLocalScale(glow,.04,glow);
+   }
    if(this.assetReady)return;
    const progress=pose.transforming?pose.transformProgress:1;
    const showForm=pose.transforming&&progress>.5?pose.targetForm:pose.form;
    this.robot.enabled=showForm==='robot';
    this.vehicle.enabled=showForm==='vehicle';
-   const squeeze=pose.transforming?.20+.80*Math.abs(progress-.5)*2:1;
-   this.robot.setLocalScale(squeeze,squeeze,squeeze);
-   this.vehicle.setLocalScale(squeeze,squeeze,squeeze);
-   this.robot.setLocalEulerAngles(0,pose.transforming?progress*360:0,0);
-   this.vehicle.setLocalEulerAngles(0,pose.transforming?progress*360:0,0);
-   const swing=pose.moving&&pose.grounded&&!pose.transforming?Math.sin(elapsed*(8+pose.speed))*.42:0;
-   this.joints.leftArm.setLocalEulerAngles(swing*35,0,0);
-   this.joints.rightArm.setLocalEulerAngles(-swing*35,0,0);
-   this.joints.leftLeg.setLocalEulerAngles(-swing*30,0,0);
-   this.joints.rightLeg.setLocalEulerAngles(swing*30,0,0);
-   for(const wheel of this.wheels)wheel.rotateLocal(pose.speed*.9,0,0);
+   const fold=pose.transforming?Math.sin(progress*Math.PI):0;
+   const squeeze=pose.transforming?.32+.68*Math.abs(progress-.5)*2:1;
+   this.robot.setLocalScale(squeeze,1-fold*.62,squeeze);
+   this.vehicle.setLocalScale(squeeze,1-fold*.35,squeeze);
+   const turn=pose.transforming?progress*145:0;
+   this.robot.setLocalEulerAngles(0,turn,0);
+   this.vehicle.setLocalEulerAngles(0,turn-145,0);
+   const stride=pose.moving&&pose.grounded&&!pose.transforming?Math.sin(elapsed*(7+pose.speed*1.3)):0;
+   const idle=pose.grounded&&!pose.moving&&!pose.transforming?Math.sin(elapsed*2.5)*.025:0;
+   this.robot.setLocalPosition(0,idle+(pose.moving?Math.abs(stride)*.055:0),0);
+   this.joints.leftArm.setLocalEulerAngles(stride*28+fold*75,0,-fold*42);
+   this.joints.rightArm.setLocalEulerAngles(-stride*28+fold*75,0,fold*42);
+   this.joints.leftElbow.setLocalEulerAngles(-Math.max(0,stride)*25-fold*75,0,0);
+   this.joints.rightElbow.setLocalEulerAngles(-Math.max(0,-stride)*25-fold*75,0,0);
+   this.joints.leftLeg.setLocalEulerAngles(-stride*29+fold*45,0,0);
+   this.joints.rightLeg.setLocalEulerAngles(stride*29+fold*45,0,0);
+   this.joints.leftKnee.setLocalEulerAngles(Math.max(0,stride)*36+fold*65,0,0);
+   this.joints.rightKnee.setLocalEulerAngles(Math.max(0,-stride)*36+fold*65,0,0);
+   this.vehicle.setLocalPosition(0,pose.moving?Math.sin(elapsed*14)*.018:0,0);
+   for(const wheel of this.wheels)wheel.rotateLocal(pose.speed*dt*115,0,0);
    this.root.setLocalScale(1,1,1);
  }
 }
+

@@ -1,4 +1,5 @@
 import * as pc from 'playcanvas';
+import type {WireColor} from '../education/ColorCircuit';
 type Shape='box'|'sphere'|'cone'|'cylinder';
 type P=[number,number,number];
 type Colored={material:pc.StandardMaterial; color:P};
@@ -13,6 +14,8 @@ export class ForestWorld {
  private readonly leftDoor:pc.Entity;
  private readonly rightDoor:pc.Entity;
  private readonly portalParts:pc.Entity[]=[];
+ private readonly powerLines=new Map<WireColor,[pc.Entity,pc.Entity]>();
+ private readonly landmarks:pc.Entity[]=[];
  private readonly crystals:{root:pc.Entity;x:number;z:number;collected:boolean}[]=[];
  private openValue=0;
  private openTarget=false;
@@ -25,7 +28,7 @@ export class ForestWorld {
      bark:[.29,.18,.12],barklight:[.41,.27,.16],pine:[.12,.35,.25],
      lime:[.32,.65,.36],lightleaf:[.49,.78,.43],gold:[.91,.67,.25],
      stone:[.49,.57,.62],steel:[.20,.31,.42],blue:[.07,.29,.77],
-     deep:[.08,.19,.30],cyan:[.08,.89,.97],orange:[1,.50,.17],
+     deep:[.08,.19,.30],cyan:[.08,.89,.97],electricBlue:[.08,.40,1],orange:[1,.50,.17],yellow:[1,.83,.12],
      violet:[.48,.31,.80],cloud:[.72,.83,.87],red:[.91,.31,.29],
      white:[.90,.96,1]
    };
@@ -34,9 +37,9 @@ export class ForestWorld {
      m.diffuse=new pc.Color(...value);
      m.gloss=key==='steel'?.75:.42;
      m.metalness=key==='steel'||key==='blue'?.55:.04;
-     if(key==='cyan'||key==='orange'||key==='gold'){
+     if(key==='cyan'||key==='electricBlue'||key==='orange'||key==='gold'||key==='red'||key==='yellow'){
        m.emissive=new pc.Color(...value);
-       m.emissiveIntensity=key==='cyan'?2: .36;
+       m.emissiveIntensity=key==='cyan'?2:key==='electricBlue'||key==='red'||key==='yellow'?1.5:.36;
      }
      m.update();
      this.mats.set(key,{material:m,color:value});
@@ -51,6 +54,7 @@ export class ForestWorld {
    }
    this.makeTreeRows();
    this.makeRockAndFlowers();
+   this.makeLandmarks();
    // Distant background objects add depth without affecting the collision route.
    for(let i=0;i<10;i++){
      const x=(i%2?-1:1)*(19+i*.83),z=-30+i*4.3;
@@ -64,6 +68,16 @@ export class ForestWorld {
      const angle=n*Math.PI/4;
      const x=Math.cos(angle)*1.24,z=this.stationZ+Math.sin(angle)*1.24;
      this.block('reactor-node-'+n,'sphere',n%2?'orange':'cyan',[x,1.26,z],[.19,.19,.19]);
+   }
+   for(const [index,color] of (['red','yellow','blue'] as WireColor[]).entries()){
+     const x=(index-1)*.58;
+     this.block('conduit-shell-'+color,'box','steel',[x,.015,-5.9],[.18,.08,6.5]);
+     const glowColor=color==='blue'?'electricBlue':color;
+     const line=this.block('powered-conduit-'+color,'box',glowColor,[x,.065,-5.9],[.10,.04,6.48]);
+     line.enabled=false;
+     const light=this.block('gate-signal-'+color,'sphere',glowColor,[x*2.35,2.77,-9.66],[.24,.24,.24]);
+     light.enabled=false;
+     this.powerLines.set(color,[line,light]);
    }
    this.block('gate-left-column','box','stone',[-3.1,1.72,-10],[1,3.6,1.1]);
    this.block('gate-right-column','box','stone',[3.1,1.72,-10],[1,3.6,1.1]);
@@ -96,7 +110,7 @@ export class ForestWorld {
  }
  private part(parent:pc.Entity,name:string,type:Shape,mat:string,pos:P,scale:P,rotation?:P):pc.Entity{
    const e=new pc.Entity(name); e.addComponent('render',{type});
-   if(e.render)e.render.material=this.mats.get(mat)!.material;
+   if(e.render){e.render.material=this.mats.get(mat)!.material;e.render.castShadows=false;}
    e.setLocalPosition(...pos);e.setLocalScale(...scale);
    if(rotation)e.setLocalEulerAngles(...rotation);
    parent.addChild(e);return e;
@@ -107,7 +121,8 @@ export class ForestWorld {
  private makeTreeRows(){
    let seed=74321;
    const rng=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
-   for(let i=0;i<68;i++){
+   const treeCount=typeof window!=='undefined'&&window.matchMedia('(pointer:coarse)').matches?44:68;
+   for(let i=0;i<treeCount;i++){
      const side=i%2?-1:1;
      const x=side*(5+rng()*16);
      const z=-33+rng()*52;
@@ -139,11 +154,35 @@ export class ForestWorld {
      this.block('trail-obelisk-'+i,'box','stone',[side*4.4,.6,8-i*4.1],[.38,1.2,.38]);
      this.block('trail-lamp-'+i,'sphere','orange',[side*4.4,1.29,8-i*4.1],[.30,.30,.30]);
    }
+   // Floor arrows point toward each next objective without requiring reading.
+   for(const [i,z] of [6,3,-5,-12,-22].entries()){
+     this.block('route-arrow-'+i,'cone','cyan',[0,.08,z],[.35,.06,.54],[90,0,0]);
+   }
+ }
+ private makeLandmarks():void{
+   // Three intentionally different silhouettes help a child remember the route.
+   this.block('arrival-trunk','cylinder','barklight',[-6.4,2.1,6.5],[.85,4.2,.85]);
+   for(let i=0;i<5;i++){
+     const a=i*Math.PI*2/5;
+     this.block('arrival-crown-'+i,'sphere','orange',[-6.4+Math.cos(a)*1.4,4.35,6.5+Math.sin(a)*1.4],[2.2,1.7,2.2]);
+   }
+   this.block('reactor-spire','cone','violet',[5,2.5,-1],[2.2,5,2.2]);
+   this.block('reactor-spire-tip','sphere','cyan',[5,5.2,-1],[.55,.55,.55]);
+   this.block('bridge-beacon','cone','gold',[-5,2.1,-18],[1.4,4.2,1.4]);
+   this.block('bridge-beacon-cap','sphere','cyan',[-5,4.35,-18],[.48,.48,.48]);
+   const rotor=new pc.Entity('bridge-beacon-rotor');
+   rotor.setPosition(-5,3.25,-17.15);this.root.addChild(rotor);
+   for(let i=0;i<4;i++)this.part(rotor,'rotor-blade-'+i,'box','gold',[0,0,0],[.16,1.9,.13],[0,0,i*45]);
+   this.landmarks.push(rotor);
  }
  get gateOpen():boolean{return this.openTarget;}
+ get gatePassable():boolean{return this.openValue>.82;}
  get collectedCount():number{return this.crystals.filter(c=>c.collected).length;}
  get completed():boolean{return this.collectedCount===this.crystals.length;}
  openGate():void{this.openTarget=true;}
+ energizeWire(color:WireColor):void{
+   for(const part of this.powerLines.get(color)??[])part.enabled=true;
+ }
  /** Call after movement. Returns number of newly collected energy cells. */
  collect(x:number,z:number):number{
    let received=0;
@@ -176,5 +215,7 @@ export class ForestWorld {
      const a=i/12*Math.PI*2+elapsed*.48;
      orb.setLocalPosition(Math.cos(a)*1.55,2.12+Math.sin(a)*1.55,this.portalZ);
    }
+   for(const landmark of this.landmarks)landmark.rotateLocal(0,0,dt*25);
  }
 }
+

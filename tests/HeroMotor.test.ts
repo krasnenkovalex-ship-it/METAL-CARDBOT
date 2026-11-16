@@ -48,3 +48,11 @@ test('vehicle travels faster than robot in free movement',()=>{
   for(let i=0;i<50;i++)b.update(.016,{...base,forward:true});
   assert.ok(4-b.pose.z>4-a.pose.z);
 });
+test('direction changes rotate over time without an instant flip',()=>{
+  const h=new HeroMotor();
+  h.update(.016,{...base,back:true});
+  assert.ok(h.pose.heading>0&&h.pose.heading<Math.PI);
+  for(let i=0;i<40;i++)h.update(.016,{...base,back:true});
+  assert.ok(Math.abs(h.pose.heading-Math.PI)<.1);
+});
+
