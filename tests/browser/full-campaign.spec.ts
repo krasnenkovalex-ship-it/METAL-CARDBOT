@@ -10,7 +10,9 @@ async function moveAxis(page:Page,axis:'x'|'z',target:number,tolerance=.35):Prom
     if(Math.abs(target-before)<=allowed)return;
     const key=axis==='x'?(target>before?'d':'a'):(target>before?'s':'w');
     await page.keyboard.down(key);
-    await page.waitForTimeout(120);
+    // Software WebGL sometimes has no animation frame inside a short key pulse.
+    // Lengthen only stalled pulses, then return to fine corrections.
+    await page.waitForTimeout(Math.min(700,120+stalled*70));
     await page.keyboard.up(key);
     await page.waitForTimeout(40);
     const after=await location(page,axis);
@@ -39,11 +41,11 @@ test('all ten story missions are playable in one browser session',async({page},t
   await moveAxis(page,'z',-11.8);
   await moveAxis(page,'x',-4.2);
   await moveAxis(page,'z',-21.2);
-  await moveAxis(page,'x',0);
+  await moveAxis(page,'x',0,1.0);
   await expect(page.locator('#progress')).toContainText('2 / 3');
   await moveAxis(page,'x',-4.2);
   await moveAxis(page,'z',-26.9);
-  await moveAxis(page,'x',0);
+  await moveAxis(page,'x',0,1.0);
   await expect(page.locator('#progress')).toContainText('3 / 3');
   await page.keyboard.down('w');
   try{await expect(page.locator('#chapter-title')).toHaveText('Эхо светлячков',{timeout:15000});}
@@ -79,7 +81,10 @@ test('all ten story missions are playable in one browser session',async({page},t
   await expect(page.locator('#form')).toHaveText('🤖 Робот',{timeout:12000});
   for(let i=0;i<2;i++){await page.keyboard.press('k');await page.waitForTimeout(750);}
   await moveAxis(page,'z',-26.4);
-  await page.keyboard.press('k');
+  for(let i=0;i<10;i++){
+    if(await page.locator('#game').getAttribute('data-mission')==='shapes')break;
+    await page.keyboard.press('k');await page.waitForTimeout(900);
+  }
   await chapter(page,'Шестерёнки узора');
   await page.keyboard.down('w');
   try{await expect(page.locator('#challenge')).toBeVisible({timeout:12000});}
@@ -94,7 +99,7 @@ test('all ten story missions are playable in one browser session',async({page},t
   await page.keyboard.press('e');
   await expect(page.locator('#form')).toHaveText('🤖 Робот',{timeout:12000});
   await moveAxis(page,'z',-26.9);
-  await moveAxis(page,'x',0);
+  await moveAxis(page,'x',0,1.0);
   await page.keyboard.down('w');
   try{await expect(page.locator('#win')).toBeVisible({timeout:15000});}
   finally{await page.keyboard.up('w');}

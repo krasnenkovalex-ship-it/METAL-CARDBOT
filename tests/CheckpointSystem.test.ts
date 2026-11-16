@@ -21,4 +21,6 @@ test('checkpoints advance after the gate and recovery keeps the vehicle form',()
   assert.equal(hero.pose.form,'vehicle');
   assert.equal(hero.pose.x,-4.45);
   assert.equal(hero.pose.z,-21);
+  checkpoints.setChapterAnchor({x:0,z:1});
+  assert.deepEqual(checkpoints.recoverIfUnsafe({x:30,z:-19},-4,'vehicle',new MazeCollision(),true,true),{x:0,z:1});
 });

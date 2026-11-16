@@ -50,7 +50,8 @@ app.root.addChild(camera);
 camera.setPosition(0,6.2,18);
 camera.lookAt(0,1,0);
 const sun=new pc.Entity('sun');
-sun.addComponent('light',{type:'directional',intensity:1.8,color:new pc.Color(1,.91,.72),castShadows:false});
+sun.addComponent('light',{type:'directional',intensity:1.8,color:new pc.Color(1,.91,.72),
+  castShadows:!mobile,shadowResolution:1024,shadowDistance:36});
 sun.setEulerAngles(52,35,0);app.root.addChild(sun);
 const rim=new pc.Entity('cool-rim-light');
 rim.addComponent('light',{type:'directional',intensity:.55,color:new pc.Color(.55,.75,1),castShadows:false});
@@ -122,6 +123,7 @@ function showMission():void{
   canvas.dataset.mission=mission.id;
   objective.textContent=mission.objective;
   motor.teleport(mission.spawn.x,mission.spawn.z);
+  world.setChapterAnchor(mission.spawn);
   keyboard.clear();touch.clear();
   props.setMission(mission.kind);world.guideTo(mission.target);
   world.setDynamicBlockers(mission.kind==='clear'?props.targets('clear').map(target=>({id:target.id,x:target.x,z:target.z,radius:1.4})):[]);

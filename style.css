@@ -29,4 +29,5 @@ footer{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-si
 .challenge-score{font-size:19px;color:#ddff9a;font-weight:900;margin:7px}
 .challenge-submit{display:block;margin:14px auto;background:linear-gradient(135deg,#b5f477,#6bc66c);color:#163b27;padding:9px 22px;font-size:20px}
 #challenge-message{min-height:28px;font-weight:900;color:#ffe6a6}
+#app::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 42%,transparent 47%,#06182a36 100%)}
 @media(max-width:720px){.touch-actions{gap:4px}.touch-actions button{min-width:55px;height:48px;font-size:17px}.challenge-sample,.challenge-choice{min-width:48px;min-height:50px;font-size:25px}.challenge-row{gap:5px}}

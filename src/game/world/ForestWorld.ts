@@ -288,6 +288,7 @@ export class ForestWorld {
   recoverIfUnsafe(p:PointXZ,y:number,form:HeroForm):PointXZ|null{
     return this.checkpoints.recoverIfUnsafe(p,y,form,this.maze,this.gatePassable,this.bridgePassable);
   }
+  setChapterAnchor(p:PointXZ):void{this.checkpoints.setChapterAnchor(p);}
   visitCheckpoint(p:PointXZ):string|null{
     const id=this.checkpoints.visit(p,this.gatePassable);
     if(id)this.checkpointLights.get(id)!.enabled=true;
