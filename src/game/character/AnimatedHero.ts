@@ -154,7 +154,7 @@ export class AnimatedHero {
    return this.assetReady;
  }
  update(pose:HeroPose,elapsed:number):void{
-   const dt=Math.max(0,Math.min(.05,elapsed-this.previousElapsed));
+   const dt=Math.max(0,Math.min(.5,elapsed-this.previousElapsed));
    this.previousElapsed=elapsed;
    this.root.setPosition(pose.x,pose.y,pose.z);
    this.root.setEulerAngles(0,pose.heading*180/Math.PI,0);

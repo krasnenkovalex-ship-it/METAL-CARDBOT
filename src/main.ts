@@ -172,12 +172,20 @@ function mergeInputs(a:HeroIntent,b:HeroIntent):HeroIntent{
 }
 app.on('update',(rawDt:number)=>{
   if(!started||finished)return;
-  const dt=Math.min(.05,Math.max(0,rawDt));
+  // Keep simulation time in step with wall time when software WebGL drops frames.
+  const dt=Math.min(.5,Math.max(0,rawDt));
   elapsed+=dt;
   const input=mergeInputs(keyboard.read(),touch.read());
   const wasTransforming=motor.pose.transforming;
   const oldForm=motor.pose.form;
-  motor.update(dt,input,puzzleOpen);
+  let remaining=dt;
+  let firstStep=true;
+  while(remaining>0){
+    const step=Math.min(.05,remaining);
+    motor.update(step,firstStep?input:{...input,jumpPressed:false,transformPressed:false},puzzleOpen);
+    remaining-=step;
+    firstStep=false;
+  }
   // The closed gate blocks the first path, without resetting earned progress.
   if(!world.gatePassable)motor.constrain(-8,8,-8.6,12);
   else motor.constrain(-8,8,-30,12);
