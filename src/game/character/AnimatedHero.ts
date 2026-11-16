@@ -42,10 +42,10 @@ export class AnimatedHero {
    this.buildRobot();
    this.buildVehicle();
    this.joints={
-      leftArm:this.robot.findByName('left-arm-pivot')!,
-      rightArm:this.robot.findByName('right-arm-pivot')!,
-      leftLeg:this.robot.findByName('left-leg-pivot')!,
-      rightLeg:this.robot.findByName('right-leg-pivot')!
+      leftArm:this.robot.findByName('left-arm-pivot') as pc.Entity,
+      rightArm:this.robot.findByName('right-arm-pivot') as pc.Entity,
+      leftLeg:this.robot.findByName('left-leg-pivot') as pc.Entity,
+      rightLeg:this.robot.findByName('right-leg-pivot') as pc.Entity
    };
  }
  private group(parent:pc.Entity,name:string,pos:P):pc.Entity{

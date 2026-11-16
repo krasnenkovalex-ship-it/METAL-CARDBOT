@@ -42,10 +42,6 @@ export class ForestWorld {
      this.mats.set(key,{material:m,color:value});
    }
    this.app.scene.ambientLight=new pc.Color(.47,.55,.64);
-   this.app.scene.fog='linear';
-   this.app.scene.fogColor=new pc.Color(.57,.76,.85);
-   this.app.scene.fogStart=32;
-   this.app.scene.fogEnd=93;
    this.block('ground','box','ground',[0,-.47,-8],[52,.85,78]);
    // Winding visual walkways indicate a main direction while leaving exploration open.
    for(let i=0;i<35;i++){

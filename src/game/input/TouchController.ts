@@ -4,7 +4,7 @@ export class TouchController {
   private jump=false;
   private transform=false;
   constructor(root:HTMLElement){
-    for(const element of root.querySelectorAll<HTMLButtonElement>('[data-control]')){
+    for(const element of Array.from(root.querySelectorAll<HTMLButtonElement>('[data-control]'))){
       const key=element.dataset.control!;
       element.addEventListener('pointerdown',(event:PointerEvent)=>{
         event.preventDefault();element.setPointerCapture(event.pointerId);
