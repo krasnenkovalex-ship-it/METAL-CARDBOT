@@ -2,7 +2,7 @@ import * as pc from 'playcanvas';
 import type {WireColor} from '../education/ColorCircuit';
 import type {HeroForm} from '../character/HeroMotor';
 import {TECH_FOREST,type PointXZ,type RectXZ,type Solid} from './TechForestLayout';
-import {MazeCollision} from './MazeCollision';
+import {MazeCollision,type DynamicBlocker} from './MazeCollision';
 import {CheckpointSystem} from './CheckpointSystem';
 
 type Shape='box'|'sphere'|'cone'|'cylinder';
@@ -18,6 +18,7 @@ export class ForestWorld {
   private readonly maze=new MazeCollision();
   private readonly checkpoints=new CheckpointSystem();
   private readonly core:pc.Entity;
+  private readonly portalCore:pc.Entity;
   private readonly leftDoor:pc.Entity;
   private readonly rightDoor:pc.Entity;
   private readonly portalParts:pc.Entity[]=[];
@@ -56,6 +57,11 @@ export class ForestWorld {
         m.emissiveIntensity=key==='cyan'?2:key==='electricBlue'||key==='red'||key==='yellow'?1.4:.34;
       }
       m.update();this.mats.set(key,m);
+    }
+    const grain=this.makeTerrainGrain();
+    for(const [key,tiling] of [['ground',new pc.Vec2(16,26)],['trail',new pc.Vec2(2,6)],['trailAlt',new pc.Vec2(2,4)]] as const){
+      const material=this.mats.get(key)!;
+      material.diffuseMap=grain;material.diffuseMapTiling=tiling;material.gloss=.14;material.update();
     }
     this.app.scene.ambientLight=new pc.Color(.47,.55,.64);
     this.block('forest-ground','box','ground',[0,-.47,-9],[54,.85,82]);
@@ -110,7 +116,7 @@ export class ForestWorld {
       this.portalParts.push(this.block('portal-ring-'+i,'sphere','cyan',
         [Math.cos(a)*1.55,2.12+Math.sin(a)*1.55,this.portalZ],[.40,.40,.40]));
     }
-    this.block('portal-core','sphere','violet',[0,2.05,this.portalZ],[1.52,1.52,.16]);
+    this.portalCore=this.block('portal-core','sphere','violet',[0,2.05,this.portalZ],[1.52,1.52,.16]);
     this.block('finish-marker','cone','gold',[0,4.12,this.portalZ],[.58,1.1,.58]);
     this.guide=this.block('next-goal-beacon','sphere','cyan',[0,3.3,-1],[.34,.34,.34]);
   }
@@ -120,6 +126,22 @@ export class ForestWorld {
     e.setLocalPosition(...pos);e.setLocalScale(...scale);
     if(rotation)e.setLocalEulerAngles(...rotation);
     parent.addChild(e);return e;
+  }
+  private makeTerrainGrain():pc.Texture{
+    const canvas=document.createElement('canvas');canvas.width=96;canvas.height=96;
+    const context=canvas.getContext('2d')!;
+    context.fillStyle='#eeeeea';context.fillRect(0,0,96,96);
+    let seed=1947;
+    const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+    for(let i=0;i<900;i++){
+      const light=175+Math.floor(random()*80);
+      context.fillStyle=`rgba(${light},${light},${light},${.12+random()*.25})`;
+      context.beginPath();context.arc(random()*96,random()*96,.3+random()*1.6,0,Math.PI*2);context.fill();
+    }
+    const texture=new pc.Texture(this.app.graphicsDevice,{width:96,height:96,mipmaps:true});
+    texture.addressU=pc.ADDRESS_REPEAT;texture.addressV=pc.ADDRESS_REPEAT;
+    texture.minFilter=pc.FILTER_LINEAR_MIPMAP_LINEAR;texture.magFilter=pc.FILTER_LINEAR;
+    texture.setSource(canvas);return texture;
   }
   private block(name:string,type:Shape,mat:string,pos:P,scale:P,rotation?:P):pc.Entity{
     return this.part(this.root,name,type,mat,pos,scale,rotation);
@@ -171,13 +193,14 @@ export class ForestWorld {
   private makeTree(x:number,z:number,height:number,leaf:string):void{
     const tree=new pc.Entity('tree');tree.setPosition(x,0,z);this.root.addChild(tree);
     this.part(tree,'trunk','cylinder','bark',[0,height*.32,0],[.33,height*.64,.33]);
-    for(let j=0;j<3;j++)this.part(tree,'canopy-'+j,'cone',leaf,
+    for(let j=0;j<3;j++)this.part(tree,'canopy-'+j,leaf==='leaf'?'sphere':'cone',leaf,
       [0,height*.48+j*.49,0],[2.0-j*.38,1.65-j*.16,2.0-j*.38]);
   }
   private buildScenery():void{
     let seed=74321;
     const rng=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
-    const treeCount=window.matchMedia('(pointer:coarse)').matches?30:46;
+    const coarse=window.matchMedia('(pointer:coarse)').matches;
+    const treeCount=coarse?30:46;
     for(let i=0;i<treeCount;i++){
       const x=(i%2?-1:1)*(10.2+rng()*13),z=-34+rng()*49;
       this.makeTree(x,z,2.3+rng()*2.2,i%4?'pine':'leaf');
@@ -186,6 +209,15 @@ export class ForestWorld {
       const x=(i%2?-1:1)*(3.1+(i*1.7)%12),z=-31+(i*5.31)%47;
       const scale=.10+(i%3)*.07;
       this.block('flower-'+i,'sphere',i%3?'violet':'gold',[x,.07,z],[scale,scale,scale]);
+    }
+    for(let i=0;i<(coarse?18:36);i++){
+      const x=(i%2?-1:1)*(8.4+rng()*15),z=-32+rng()*49;
+      const size=.35+rng()*.45;
+      this.block('forest-shrub-'+i,'sphere',i%4?'moss':'leaf',[x,.18,z],[size,.35,size*1.2]);
+    }
+    for(let i=0;i<(coarse?12:24);i++){
+      const x=(i%2?-1:1)*(7.5+rng()*12),z=-30+rng()*46;
+      this.block('firefly-'+i,'sphere','cyan',[x,.8+rng()*2.5,z],[.08,.08,.08]);
     }
   }
   private buildLandmarks():void{
@@ -243,6 +275,8 @@ export class ForestWorld {
   resolveMovement(from:PointXZ,to:PointXZ,form:HeroForm):PointXZ{
     return this.maze.move(from,to,form,this.gatePassable,this.bridgePassable);
   }
+  setDynamicBlockers(blockers:readonly DynamicBlocker[]):void{this.maze.setDynamicBlockers(blockers);}
+  removeDynamicBlocker(id:number):void{this.maze.removeDynamicBlocker(id);}
   canTransformAt(p:PointXZ,form:HeroForm):boolean{
     return this.maze.canOccupy(p,this.maze.radius(form),this.gatePassable,this.bridgePassable);
   }
@@ -270,6 +304,7 @@ export class ForestWorld {
     if(received){
       const next=this.crystals.find(c=>!c.collected);
       this.setGuide(next?{x:next.x,z:next.z}:TECH_FOREST.portal);
+      if(!next&&this.portalCore.render){this.portalCore.render.material=this.mats.get('cyan')!;}
     }
     return received;
   }
@@ -286,6 +321,25 @@ export class ForestWorld {
     if(this.collectedCount===1)return 'Две тропы ведут через реку. Мост справа поднимется сам.';
     return this.completed?'Сияющий портал уже близко!':'Ищи следующий сияющий кристалл у развилки.';
   }
+  setChapterLook(chapter:number):void{
+    const looks:[P,P,P,P][]=[
+      [[.11,.31,.23],[.12,.34,.29],[.29,.51,.32],[.51,.42,.30]],
+      [[.11,.35,.30],[.10,.38,.34],[.36,.65,.42],[.54,.44,.31]],
+      [[.13,.29,.33],[.12,.35,.42],[.30,.58,.61],[.49,.42,.36]],
+      [[.23,.28,.31],[.26,.34,.38],[.59,.49,.56],[.57,.43,.35]],
+      [[.18,.30,.29],[.16,.37,.38],[.42,.63,.53],[.56,.47,.36]],
+      [[.30,.27,.20],[.33,.30,.22],[.62,.54,.31],[.59,.45,.29]],
+      [[.12,.26,.32],[.12,.33,.40],[.35,.54,.63],[.50,.46,.38]],
+      [[.20,.23,.34],[.24,.28,.43],[.51,.46,.65],[.50,.39,.36]],
+      [[.30,.25,.25],[.34,.28,.30],[.65,.44,.41],[.58,.43,.36]],
+      [[.15,.35,.30],[.14,.42,.38],[.51,.72,.51],[.56,.46,.32]]
+    ];
+    const [ground,pine,leaf,trail]=looks[Math.max(0,Math.min(9,chapter-1))];
+    for(const [key,rgb] of [['ground',ground],['pine',pine],['leaf',leaf],['trail',trail]] as [string,P][]){
+      const material=this.mats.get(key)!;material.diffuse=new pc.Color(...rgb);material.update();
+    }
+  }
+  guideTo(p:PointXZ):void{this.setGuide(p);}
   private setGuide(p:PointXZ):void{this.guide.setPosition(p.x,3.3,p.z);}
   update(elapsed:number,dt:number):void{
     this.pulse+=dt;

@@ -66,7 +66,7 @@ export class SynthSoundtrack {
       this.step++;
     }
   }
-  effect(kind:'correct'|'pickup'|'transform'|'wrong'|'victory'|'step'|'drive'|'land'|'gate'):void{
+  effect(kind:'correct'|'pickup'|'transform'|'wrong'|'victory'|'step'|'drive'|'land'|'gate'|'strike'|'pulse'):void{
     if(!this.context||!this.enabled)return;
     const now=this.context.currentTime+.01;
     if(kind==='step'||kind==='drive'||kind==='land'){
@@ -74,6 +74,8 @@ export class SynthSoundtrack {
       if(kind==='drive')this.tone(95,now,.08,.008,'sawtooth');
       return;
     }
+    if(kind==='strike'){this.percussion(now,.024,.11);this.tone(155,now,.13,.025,'sawtooth');return;}
+    if(kind==='pulse'){this.tone(440,now,.10,.025,'sine');this.tone(659,now+.05,.16,.024,'sine');return;}
     const notes=kind==='wrong'?[310,260]:kind==='transform'?[220,330,494,740]:
       kind==='gate'?[330,440,554,659,880]:kind==='victory'?[440,554,659,880,1047]:
       kind==='pickup'?[659,988]:[523,659,784];

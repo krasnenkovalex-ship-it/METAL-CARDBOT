@@ -17,3 +17,6 @@
 - Tested shareable deployment, real gameplay trailer, cleared original music and rights-reviewed art.
 ## Scope guard
 Do not implement ten superficial levels before M1–M3 are verified. No success claims based on automated browser scripts alone.
+
+The ten chapter campaign now uses one shared forest level and distinct actions. This is not the ten separate authored levels proposed in the GDD; art acceptance and real child/device playtests remain open.
+

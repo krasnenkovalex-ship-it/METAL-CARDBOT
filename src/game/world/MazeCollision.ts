@@ -3,9 +3,13 @@ import type {HeroForm} from '../character/HeroMotor';
 
 const inside=(p:PointXZ,r:RectXZ):boolean=>p.x>=r.minX&&p.x<=r.maxX&&p.z>=r.minZ&&p.z<=r.maxZ;
 const clamp=(v:number,min:number,max:number):number=>Math.max(min,Math.min(max,v));
+export interface DynamicBlocker extends PointXZ {id:number;radius:number}
 
 /** A small, deterministic XZ character collider. It has no render-engine dependency. */
 export class MazeCollision {
+  private dynamicBlockers:DynamicBlocker[]=[];
+  setDynamicBlockers(blockers:readonly DynamicBlocker[]):void{this.dynamicBlockers=blockers.map(blocker=>({...blocker}));}
+  removeDynamicBlocker(id:number):void{this.dynamicBlockers=this.dynamicBlockers.filter(blocker=>blocker.id!==id);}
   radius(form:HeroForm):number{return form==='vehicle'?.72:.43;}
   canOccupy(p:PointXZ,radius:number,gatePassable:boolean,rightBridgePassable=true):boolean{
     for(let i=0;i<=12;i++){
@@ -15,6 +19,7 @@ export class MazeCollision {
       if(inside(sample,TECH_FOREST.water)&&!TECH_FOREST.bridges.some((bridge,index)=>(index===0||rightBridgePassable)&&inside(sample,bridge)))return false;
     }
     if(!gatePassable&&this.intersectsRect(p,radius,TECH_FOREST.gate))return false;
+    if(this.dynamicBlockers.some(blocker=>Math.hypot(p.x-blocker.x,p.z-blocker.z)<radius+blocker.radius))return false;
     return !TECH_FOREST.solids.some(solid=>this.intersectsSolid(p,radius,solid));
   }
   private intersectsRect(p:PointXZ,radius:number,rect:RectXZ):boolean{

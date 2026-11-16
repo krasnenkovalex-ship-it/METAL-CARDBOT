@@ -1,16 +1,16 @@
 <!doctype html><html lang="ru"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#12354a"><title>METAL CARDBOT — Первая миссия в Технолесу</title></head>
+<meta name="theme-color" content="#12354a"><title>METAL CARDBOT — Десять миссий Технолеса</title></head>
 <body><div id="app">
 <canvas id="game" aria-label="Трёхмерное приключение"></canvas>
-<header class="hud"><div class="logo"><strong>✦ METAL CARDBOT</strong><small>МИССИЯ 01 — ТЕХНОЛЕС</small></div>
+<header class="hud"><div class="logo"><strong>✦ METAL CARDBOT</strong><small id="chapter-label">МИССИЯ 01 / 10 — ТЕХНОЛЕС</small></div>
 <div class="mission"><b id="objective">Подойди к сияющему устройству</b><small><span id="form">🤖 Робот</span> · <span id="progress">⚡ 0 / 3</span></small></div>
 <button id="mute" aria-label="Выключить музыку">♫</button></header>
 <div id="story" class="story" role="status" aria-live="polite"></div>
 <section id="menu" class="overlay"><article><div class="eyebrow">ПРИКЛЮЧЕНИЕ 5+</div>
-<h1>Миссия <span>Технолес</span></h1>
-<p>Робот отправляется в загадочный лес! Найди реактор, соедини провода, открой ворота и собери три энергоячейки.</p>
-<div class="pills"><span>🤖 Превращения</span><span>🧠 Головоломка</span><span>🎵 Музыка</span></div>
+<h1>Десять миссий <span>Технолеса</span></h1>
+<p>Помоги лесу снова засветиться: решай разные головоломки, патрулируй на машине и возвращай игрушечных дронов домой.</p>
+<div class="pills"><span>🚓 E — машина</span><span>✊ J — удар</span><span>✦ K — импульс</span><span>🧠 10 миссий</span></div>
 <button class="primary" id="start">▶ НАЧАТЬ ПРИКЛЮЧЕНИЕ</button>
 <p class="fine">Это рабочий прототип. Официальные модели и музыка Metal Cardbot не включены.</p>
 </article></section>
@@ -23,11 +23,12 @@
 <div class="actions"><button id="hint">💡 Подсказка</button><button id="cancel">Позже</button></div>
 </article></section>
 <section id="win" class="overlay hidden"><article><div class="eyebrow">МИССИЯ ЗАВЕРШЕНА</div>
-<h1>🏆 Герой Технолеса!</h1><p>Энергомост работает, все три кристалла собраны, и портал найден!</p>
+<h1>🏆 Герой Технолеса!</h1><p>Все десять миссий пройдены. Технолес снова сияет!</p>
 <button id="replay" class="primary">↻ ЕЩЁ РАЗ</button></article></section>
+<section id="chapter" class="overlay hidden"><article><div class="eyebrow" id="chapter-number"></div><h1 id="chapter-title"></h1><p id="chapter-story"></p><button id="chapter-start" class="primary">▶ ПРОДОЛЖИТЬ</button></article></section>
 <div id="touch" class="touch" aria-label="Экранное управление"><div class="directions">
 <button data-control="forward" class="up" aria-label="Вперёд">▲</button><button data-control="left" class="left" aria-label="Влево">◀</button>
 <button data-control="back" class="down" aria-label="Назад">▼</button><button data-control="right" class="right" aria-label="Вправо">▶</button>
-</div><div class="touch-actions"><button data-control="jump">↑<small>ПРЫЖОК</small></button><button data-control="transform">⇄<small>МАШИНА</small></button></div></div>
-<footer>WASD — движение · ПРОБЕЛ — прыжок · E — трансформация · Задание включится само</footer>
+</div><div class="touch-actions"><button data-control="strike">✊<small>УДАР</small></button><button data-control="pulse">✦<small>ИМПУЛЬС</small></button><button data-control="jump">↑<small>ПРЫЖОК</small></button><button data-control="transform">⇄<small>ФОРМА</small></button></div></div>
+<footer>WASD — движение · ПРОБЕЛ — прыжок · E — форма · J — удар · K — импульс</footer>
 </div><script type="module" src="/src/main.ts"></script></body></html>

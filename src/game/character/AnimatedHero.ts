@@ -2,7 +2,7 @@ import * as pc from 'playcanvas';
 import {CharacterModels} from './CharacterModels';
 import type {HeroPose} from './HeroMotor';
 
-type Shape='box'|'sphere'|'cylinder'|'cone';
+type Shape='box'|'sphere'|'cylinder'|'cone'|'capsule'|'torus';
 type P=[number,number,number];
 type ColorKey='blue'|'deep'|'white'|'metal'|'gold'|'glass'|'cyan'|'black'|'red';
 const tones:Record<ColorKey,P>={
@@ -21,6 +21,9 @@ export class AnimatedHero {
  private readonly transformGlow:pc.Entity;
  private previousElapsed=0;
  private assetReady=false;
+ private actionUntil=0;
+ private actionKind:'strike'|'pulse'='strike';
+ private readonly roundedPanel:pc.Mesh;
  private readonly materials=new Map<ColorKey,pc.StandardMaterial>();
  constructor(private readonly app:pc.Application){
    app.root.addChild(this.root);
@@ -40,6 +43,7 @@ export class AnimatedHero {
      m.update();
      this.materials.set(name,m);
    }
+   this.roundedPanel=this.makeRoundedPanel();
    this.buildRobot();
    this.buildVehicle();
    this.transformGlow=this.part(this.root,'transformation-energy','cylinder','cyan',[0,-.86,0],[1.5,.04,1.5]);
@@ -64,11 +68,43 @@ export class AnimatedHero {
  }
  private part(parent:pc.Entity,name:string,shape:Shape,color:ColorKey,pos:P,size:P,rotation?:P):pc.Entity{
    const entity=this.group(parent,name,pos);
-   entity.addComponent('render',{type:shape});
-   if(entity.render)entity.render.material=this.materials.get(color)!;
+   if(shape==='box'){
+     entity.addComponent('render',{type:'asset'});
+     if(entity.render)entity.render.meshInstances=[new pc.MeshInstance(this.roundedPanel,this.materials.get(color)!,entity)];
+   }else{
+     entity.addComponent('render',{type:shape});
+     if(entity.render)entity.render.material=this.materials.get(color)!;
+   }
    entity.setLocalScale(...size);
    if(rotation)entity.setLocalEulerAngles(...rotation);
    return entity;
+ }
+ private makeRoundedPanel():pc.Mesh{
+   const positions:number[]=[],normals:number[]=[],uvs:number[]=[],indices:number[]=[];
+   const inner=.38,radius=.12,segments=4;
+   for(let axis=0;axis<3;axis++)for(const side of [-1,1]){
+     const faceStart=positions.length/3;
+     const a=(axis+1)%3,b=(axis+2)%3;
+     for(let j=0;j<=segments;j++)for(let i=0;i<=segments;i++){
+       const point=[0,0,0];point[axis]=side*.5;
+       point[a]=i/segments-.5;point[b]=j/segments-.5;
+       const base=point.map(value=>Math.max(-inner,Math.min(inner,value)));
+       const offset=point.map((value,k)=>value-base[k]);
+       const length=Math.hypot(...offset)||1;
+       const normal=offset.map(value=>value/length);
+       positions.push(...base.map((value,k)=>value+normal[k]*radius));
+       normals.push(...normal);uvs.push(i/segments,j/segments);
+     }
+     for(let j=0;j<segments;j++)for(let i=0;i<segments;i++){
+       const v=faceStart+j*(segments+1)+i;
+       const t=[v,v+1,v+segments+2,v+segments+1];
+       if(side===1)indices.push(t[0],t[1],t[2],t[0],t[2],t[3]);
+       else indices.push(t[0],t[2],t[1],t[0],t[3],t[2]);
+     }
+   }
+   const mesh=new pc.Mesh(this.app.graphicsDevice);
+   mesh.setPositions(positions);mesh.setNormals(normals);mesh.setUvs(0,uvs);mesh.setIndices(indices);mesh.update();
+   return mesh;
  }
  private buildRobot():void{
    const p=this.part.bind(this);
@@ -79,16 +115,16 @@ export class AnimatedHero {
    const legs:[string,number][]=[['left',-.26],['right',.26]];
    for(const [name,x] of legs){
      const pivot=this.group(b,name+'-leg-pivot',[x,-.22,0]);
-     p(pivot,'thigh-'+name,'box','deep',[0,-.20,0],[.29,.48,.36]);
+     p(pivot,'thigh-'+name,'capsule','deep',[0,-.20,0],[.29,.48,.36]);
      const knee=this.group(pivot,name+'-knee-pivot',[0,-.40,-.09]);
      p(knee,'knee-'+name,'sphere','gold',[0,0,0],[.34,.24,.39]);
-     p(knee,'shin-'+name,'cylinder','blue',[0,-.13,.06],[.31,.42,.36]);
+     p(knee,'shin-'+name,'capsule','blue',[0,-.13,.06],[.31,.42,.36]);
      p(knee,'shin-ridge-'+name,'box','white',[0,-.13,-.23],[.21,.29,.10]);
      p(knee,'boot-'+name,'sphere','metal',[0,-.38,-.04],[.40,.20,.65]);
      p(knee,'boot-toe-'+name,'sphere','gold',[0,-.38,-.34],[.36,.13,.22]);
    }
    p(b,'lower-chest','box','deep',[0,.15,0],[.82,.55,.58]);
-   p(b,'chest-core','box','white',[0,.49,0],[1.10,.76,.67]);
+   p(b,'chest-core','capsule','white',[0,.49,0],[1.10,.76,.67]);
    p(b,'chest-armor','box','blue',[0,.47,-.40],[.90,.55,.14]);
    p(b,'windshield-left','box','glass',[-.25,.60,-.49],[.36,.30,.035]);
    p(b,'windshield-right','box','glass',[.25,.60,-.49],[.36,.30,.035]);
@@ -99,7 +135,7 @@ export class AnimatedHero {
      const pivot=this.group(b,name+'-arm-pivot',[x,.76,0]);
      p(pivot,'pauldron-'+name,'sphere','blue',[0,-.05,0],[.53,.45,.64]);
      p(pivot,'shoulder-trim-'+name,'box','white',[0,-.08,-.26],[.33,.21,.11]);
-     p(pivot,'upper-arm-'+name,'cylinder','metal',[0,-.32,0],[.29,.43,.34]);
+     p(pivot,'upper-arm-'+name,'capsule','metal',[0,-.32,0],[.29,.43,.34]);
      const elbow=this.group(pivot,name+'-elbow-pivot',[0,-.56,0]);
      p(elbow,'elbow-'+name,'sphere','gold',[0,0,0],[.28,.26,.29]);
      p(elbow,'gauntlet-'+name,'sphere','blue',[0,-.14,-.05],[.36,.38,.44]);
@@ -109,7 +145,7 @@ export class AnimatedHero {
      p(b,'wheel-hub-'+name,'cylinder','metal',[x*1.52,.47,.25],[.20,.17,.20],[0,0,90]);
    }
    p(b,'neck','cylinder','metal',[0,.90,0],[.25,.21,.25]);
-   p(b,'helm','box','blue',[0,1.21,0],[.57,.55,.50]);
+   p(b,'helm','sphere','blue',[0,1.21,0],[.57,.55,.50]);
    p(b,'faceplate','box','white',[0,1.11,-.27],[.42,.27,.08]);
    p(b,'visor','box','cyan',[0,1.31,-.31],[.43,.13,.09]);
    p(b,'helmet-crown','box','deep',[0,1.52,0],[.51,.16,.53]);
@@ -121,7 +157,7 @@ export class AnimatedHero {
  private buildVehicle():void{
    const b=this.vehicle,p=this.part.bind(this);
    p(b,'underbody','box','deep',[0,-.50,0],[1.47,.43,2.30]);
-   p(b,'hood','box','blue',[0,-.23,-.73],[1.43,.35,.81]);
+   p(b,'hood','sphere','blue',[0,-.23,-.73],[1.43,.35,.81]);
    p(b,'front-grille','box','metal',[0,-.48,-1.17],[.87,.27,.09]);
    p(b,'front-bumper','box','white',[0,-.65,-1.18],[1.48,.18,.17]);
    p(b,'cabin','box','white',[0,-.08,.23],[1.20,.61,1.26]);
@@ -153,6 +189,9 @@ export class AnimatedHero {
    }
    return this.assetReady;
  }
+ performAction(kind:'strike'|'pulse',elapsed:number):void{
+   this.actionKind=kind;this.actionUntil=elapsed+.28;
+ }
  update(pose:HeroPose,elapsed:number):void{
    const dt=Math.max(0,Math.min(.5,elapsed-this.previousElapsed));
    this.previousElapsed=elapsed;
@@ -183,6 +222,11 @@ export class AnimatedHero {
    this.joints.rightArm.setLocalEulerAngles(-stride*28+fold*75,0,fold*42);
    this.joints.leftElbow.setLocalEulerAngles(-Math.max(0,stride)*25-fold*75,0,0);
    this.joints.rightElbow.setLocalEulerAngles(-Math.max(0,-stride)*25-fold*75,0,0);
+   if(!pose.transforming&&elapsed<this.actionUntil){
+     const strike=(this.actionUntil-elapsed)/.28;
+     this.joints.rightArm.setLocalEulerAngles(this.actionKind==='strike'?-120+strike*35:-80,0,-18);
+     this.joints.rightElbow.setLocalEulerAngles(this.actionKind==='strike'?-35:-10,0,0);
+   }
    this.joints.leftLeg.setLocalEulerAngles(-stride*29+fold*45,0,0);
    this.joints.rightLeg.setLocalEulerAngles(stride*29+fold*45,0,0);
    this.joints.leftKnee.setLocalEulerAngles(Math.max(0,stride)*36+fold*65,0,0);

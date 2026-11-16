@@ -18,3 +18,15 @@ footer{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-si
 .touch{position:absolute;z-index:5;left:12px;right:12px;bottom:12px;display:none;align-items:end;justify-content:space-between;pointer-events:none;user-select:none;touch-action:none}.touch button{pointer-events:auto;touch-action:none;min-height:52px;min-width:52px;border:1px solid #8bd3ef;border-radius:13px;background:#184f78d9;color:white;font-size:24px;font-weight:900}.directions{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,54px);gap:4px}.directions .up{grid-column:2;grid-row:1}.directions .left{grid-column:1;grid-row:2}.directions .down{grid-column:2;grid-row:2}.directions .right{grid-column:3;grid-row:2}.touch-actions{display:flex;gap:7px}.touch-actions button{min-width:70px;height:76px}.touch-actions small{display:block;font-size:9px}
 @media(pointer:coarse),(max-width:720px){.touch{display:flex}footer{display:none}.hud{padding:7px;gap:5px}.logo strong{font-size:13px}.logo small{font-size:8px}.mission{padding:6px;max-width:52vw}.mission b{font-size:11px}#mute{width:35px;height:35px;font-size:18px}.story{bottom:29%}.wire{min-height:47px;font-size:13px}.circuits{gap:7px;margin:8px auto}.overlay article{padding:14px}}
 @media(max-height:480px){.overlay article{padding:11px}.overlay h1{font-size:28px;margin:6px}.overlay h2{font-size:22px;margin:7px}.overlay p{margin:6px auto;font-size:12px}.wire{min-height:37px}.circuits{margin:4px auto}.primary{padding:10px 18px;font-size:14px}.story{bottom:25%}}
+.touch-actions{display:grid;grid-template-columns:repeat(2,minmax(64px,1fr))}.touch-actions button{min-width:64px;height:56px;font-size:20px}.touch-actions small{font-size:8px}
+.challenge-card{background:linear-gradient(145deg,#1d4b70,#112d50 55%,#132a46)!important}
+.challenge-row{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:15px auto}
+.challenge-sample,.challenge-choice{display:grid;place-items:center;min-width:64px;min-height:64px;border-radius:17px;font-size:32px;font-weight:900}
+.challenge-sample{background:#102943;border:2px solid #70c8e5;color:#f9e9a4}
+.challenge-choice{background:linear-gradient(145deg,#2b729b,#204d79);border:2px solid #8cddf4;color:white;box-shadow:0 7px 14px #061b32aa;transition:transform .15s,filter .15s}
+.challenge-choice:hover,.challenge-choice:focus-visible{transform:translateY(-3px);filter:brightness(1.18)}
+.challenge-choice.selected{background:#4a966b;border-color:#e7ffad}
+.challenge-score{font-size:19px;color:#ddff9a;font-weight:900;margin:7px}
+.challenge-submit{display:block;margin:14px auto;background:linear-gradient(135deg,#b5f477,#6bc66c);color:#163b27;padding:9px 22px;font-size:20px}
+#challenge-message{min-height:28px;font-weight:900;color:#ffe6a6}
+@media(max-width:720px){.touch-actions{gap:4px}.touch-actions button{min-width:55px;height:48px;font-size:17px}.challenge-sample,.challenge-choice{min-width:48px;min-height:50px;font-size:25px}.challenge-row{gap:5px}}

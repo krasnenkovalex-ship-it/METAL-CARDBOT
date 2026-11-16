@@ -56,3 +56,12 @@ test('camera ray is stopped before a large wall',()=>{
   const clipped=maze.clipCamera({x:-4.2,z:-14},{x:0,z:-16},true);
   assert.ok(clipped.x< -2.1);
 });
+test('removing a soft mission obstacle physically opens the garden path',()=>{
+  const withVine=new MazeCollision();
+  withVine.setDynamicBlockers([{id:0,x:-4.2,z:-23.2,radius:1.4}]);
+  const blocked=withVine.move({x:-4.2,z:-21.2},{x:-4.2,z:-24},'robot',true);
+  assert.ok(blocked.z>-23);
+  withVine.removeDynamicBlocker(0);
+  const open=withVine.move(blocked,{x:-4.2,z:-24},'robot',true);
+  assert.ok(open.z<-23.8);
+});
