@@ -2,6 +2,9 @@ import * as pc from 'playcanvas';
 import '../style.css';
 import { ProximityTrigger } from './game/interaction/ProximityTrigger';
 import { firstPuzzle } from './game/education/levelOne';
+import {HeroMotor} from './game/character/HeroMotor';
+import {CharacterModels} from './game/character/CharacterModels';
+import {PhysicalKeyboard} from './game/input/PhysicalKeyboard';
 
 // Technical test scene only. Final hero, forest and puzzles require authored assets.
 function requireElement<T extends HTMLElement>(selector:string):T{
@@ -67,17 +70,34 @@ make('gate-top','box',[.35,.65,.83],[0,3.6,-12],[6.8,.7,.7]);
 const gate=make('gate-lock','box',[.85,.28,.25],[0,1.55,-12],[5.3,3,.25]);
 // This BLOCKOUT must be replaced with an original licensed 3D robot.
 const hero=make('temporary-hero','box',[.18,.40,.92],[0,.9,4],[.95,1.8,.75]);
-make('hero-head','box',[.70,.81,.93],[0,2.03,4],[.66,.55,.65]);
+const heroHead=make('hero-head','box',[.70,.81,.93],[0,2.03,4],[.66,.55,.65]);
+const carBlockout=make('temporary-car','box',[.13,.34,.82],[0,.65,4],[1.3,.8,2]);
+carBlockout.enabled=false;
+const heroAnchor=new pc.Entity('hero-anchor');
+app.root.addChild(heroAnchor);
+const models=new CharacterModels(app,heroAnchor);
+const motor=new HeroMotor();
+const keyboard=new PhysicalKeyboard();
+let authoredModelsReady=false;
+// The polished Blue Cop pair is supplied later in M1, after asset/rights review.
+// Until then the engineering scene deliberately uses clearly labeled stand-ins.
+void models.loadPair().then(ready=>{
+  authoredModelsReady=ready;
+  if(ready){
+    hero.enabled=false;
+    heroHead.enabled=false;
+    carBlockout.enabled=false;
+  }
+});
 
-const pressed=new Set<string>();
 const trigger=new ProximityTrigger('energy-gate-01',0,-5,2.4,3.2,.28);
 let started=false;
 let taskOpen=false;
-let jumping=false;
-let verticalVelocity=0;
+let elapsed=0;
 
 function openPuzzle():void{
   taskOpen=true;
+  keyboard.clear();
   puzzleTitle.textContent=firstPuzzle.title;
   question.textContent=firstPuzzle.prompt;
   feedback.textContent='';
@@ -115,43 +135,42 @@ requireElement<HTMLButtonElement>('#start').addEventListener('click',()=>{
   app.start();
 });
 
-const blockedKeys=new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
-window.addEventListener('keydown',(event:KeyboardEvent)=>{
-  pressed.add(event.code);
-  if(blockedKeys.has(event.code)) event.preventDefault();
-  if(event.code==='Space'&&!event.repeat&&started&&!taskOpen&&!jumping){
-    verticalVelocity=6.4;jumping=true;
-  }
-});
-window.addEventListener('keyup',event=>{pressed.delete(event.code);});
-window.addEventListener('blur',()=>pressed.clear());
-const down=(...codes:string[])=>codes.some(code=>pressed.has(code));
-
 app.on('update',(rawDt:number)=>{
   if(!started)return;
   const dt=Math.min(rawDt,.05);
-  const previous=hero.getPosition();
+  elapsed+=dt;
+  const input=keyboard.read();
+  motor.update(dt,input,taskOpen);
+  const next=motor.pose;
   if(!taskOpen){
-    const dx=Number(down('KeyD','ArrowRight'))-Number(down('KeyA','ArrowLeft'));
-    const dz=Number(down('KeyS','ArrowDown'))-Number(down('KeyW','ArrowUp'));
-    const length=Math.hypot(dx,dz)||1;
-    const nx=Math.max(-14,Math.min(14,previous.x+dx/length*4.6*dt));
-    let nz=Math.max(-17,Math.min(14,previous.z+dz/length*4.6*dt));
-    if(trigger.status!=='complete' && nz < -11 && Math.abs(nx) < 3.6) nz=-11;
-    hero.setPosition(nx,previous.y,nz);
-    if(jumping){
-      verticalVelocity-=16*dt;
-      const y=hero.getPosition().y+verticalVelocity*dt;
-      if(y<=.9){hero.setPosition(nx,.9,nz);jumping=false;verticalVelocity=0;}
-      else hero.setPosition(nx,y,nz);
+    if(trigger.status!=='complete' && next.z < -11 && Math.abs(next.x)<3.6){
+      motor.constrain(-14,14,-11,14);
+    }else{
+      motor.constrain(-14,14,-17,14);
     }
   }
-  const pos=hero.getPosition();
-  if(trigger.update(pos.x,pos.z,dt,!taskOpen&&!jumping))openPuzzle();
+  const pose=motor.pose;
+  models.apply(pose,elapsed);
+  if(!authoredModelsReady){
+    const isCar=pose.form==='vehicle';
+    hero.enabled=!isCar;heroHead.enabled=!isCar;
+    carBlockout.enabled=isCar;
+    hero.setPosition(pose.x,pose.y,pose.z);
+    heroHead.setPosition(pose.x,pose.y+1.13,pose.z);
+    carBlockout.setPosition(pose.x,pose.y-.25,pose.z);
+    const facing=pose.heading*180/Math.PI;
+    hero.setEulerAngles(0,facing,0);
+    heroHead.setEulerAngles(0,facing,0);
+    carBlockout.setEulerAngles(0,facing,0);
+  }
+  if(trigger.update(pose.x,pose.z,dt,!taskOpen && pose.grounded && !pose.transforming))openPuzzle();
   const cp=camera.getPosition();
   const blend=Math.min(1,dt*4.5);
-  camera.setPosition(cp.x+(pos.x-cp.x)*blend,7,cp.z+(pos.z+10-cp.z)*blend);
-  camera.lookAt(pos.x,1.3,pos.z-2);
+  camera.setPosition(
+    cp.x+(pose.x-cp.x)*blend,
+    7,
+    cp.z+(pose.z+10-cp.z)*blend
+  );
+  camera.lookAt(pose.x,1.3,pose.z-2);
   reactor.rotate(0,dt*55,0);
 });
-window.addEventListener('resize',()=>app.resizeCanvas());
