@@ -16,3 +16,9 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: METAL-CARDBOT-offline-demo
+          path: dist/index.html
+          retention-days: 30
+          if-no-files-found: error

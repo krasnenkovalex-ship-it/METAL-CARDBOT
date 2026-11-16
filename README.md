@@ -1,21 +1,61 @@
-# METAL CARDBOT — browser adventure (work in progress)
+# METAL CARDBOT — браузерная приключенческая игра (5+)
 
-Educational action-adventure for children aged 5+, designed for the browser.
+**Текущий статус:** первый *playable slice* (инженерная демоверсия) в ветке `feature/first-playable-slice`. Не финальная игра и не лицензированная игра по официальной франшизе.
 
-## Project status
-Pre-production: the playable 3D vertical slice is **not yet complete**. Development is organized around automated tests, accessible interactions, and a high-quality original asset pipeline.
+## Как попробовать
 
-## Goals
-- Transforming robot, living 3D maze, short story missions.
-- Proximity-triggered puzzles; no F key required for essential tasks.
-- Educational play: spatial reasoning, memory, patterns, counting up to 20, speech and logic.
-- Bosses as puzzles, not difficult combat.
-- Clear HUD, consistent keyboard/touch controls, no punishments for mistakes.
+1. Открой GitHub Actions → последний успешный запуск **Build & test** для `feature/first-playable-slice`.
+2. В блоке **Artifacts** скачай `METAL-CARDBOT-offline-demo`.
+3. Распакуй ZIP и открой `index.html` в Chrome / Edge с поддержкой WebGL2.
+4. На стартовом экране нажми «Начать приключение» — это также разрешает запуск музыки в браузере.
 
-## Tech
-TypeScript · PlayCanvas · Vite · Node.js 22+
+## Управление
 
-## Rights
-This public repository contains original code and placeholder assets only. Metal Cardbot is a third-party franchise; no official 3D models, logos, TV audio or music are included. The name is a working reference, not an assertion of affiliation.
+| Действие | Управление |
+| --- | --- |
+| Вперёд / назад / в стороны | W / S / A / D |
+| Прыжок | Пробел |
+| Трансформация | E |
+| Музыка | Кнопка ♫ в верхнем углу |
+| Задача у реактора | Запускается автоматически при приближении |
 
-See the project branch and documentation for the production plan.
+На сенсорных устройствах есть виртуальные кнопки движения, прыжка и трансформации. Вопросы можно решать прикосновениями.
+
+## Что есть в этой сборке
+
+- Процедурный оригинальный сине-бело-золотой робот и полицейский автомобиль с базовой анимацией. **Это не официальная 3D-модель Blue Cop**.
+- Тропа в 3D-Технолесу, реактор, анимированные ворота, река и мост, три собираемых энергоячейки и финальный портал.
+- Автоматическая активация цветовой головоломки: соединить три провода с разъёмами подходящего цвета; ворота открываются в 3D-мире.
+- Оригинальная синтезируемая музыка и эффекты; необязательные голосовые подсказки на русском.
+- Тесты игровой логики и HTML-бандл без внешних JS/CSS.
+
+## Локальная разработка
+
+Нужен Node.js 22+.
+
+```bash
+npm install
+npm run dev
+```
+
+Проверка качества:
+
+```bash
+npm test
+npm run typecheck
+npm run build
+```
+
+Сборка `dist/index.html` является самостоятельным файлом благодаря `vite-plugin-singlefile`. Её также прикрепляет GitHub Actions к успешному запуску.
+
+## Чего пока НЕТ
+
+- Настоящего художественного GLB-ассета Blue Cop, полноценной кинематографичной трансформации и оригинальных персонажных анимаций.
+- Десяти уровней, боссов, полноценной системы адаптивного обучения и финальной музыки.
+- Доказанного FPS и полноценного визуального playtest на устройстве ребёнка.
+
+**Следующий milestone:** качественная лицензированная модель/риг, 30-секундное отполированное вступление, продвинутые анимации и полноценный лабиринт вместо демонстрационной лесной тропы.
+
+## Права
+
+METAL CARDBOT и Blue Cop — персонажи и название сторонней франшизы. Этот репозиторий не связан с правообладателями. В публичный репозиторий не добавляются официальные 3D-модели, логотипы или аудиоматериалы без разрешения. Все текущие временные художественные решения оригинальны.

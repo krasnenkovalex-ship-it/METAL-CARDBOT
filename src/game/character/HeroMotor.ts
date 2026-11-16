@@ -7,7 +7,7 @@ export interface HeroIntent {
 export interface HeroPose {
   x:number; y:number; z:number;
   heading:number; speed:number; form:HeroForm;
-  transforming:boolean; grounded:boolean; moving:boolean;
+  transforming:boolean; transformProgress:number; targetForm:HeroForm; grounded:boolean; moving:boolean;
 }
 const approach=(current:number,target:number,rate:number,dt:number):number =>
   current+(target-current)*(1-Math.exp(-rate*dt));
@@ -33,7 +33,8 @@ export class HeroMotor {
     return {
       x:this.x,y:this.y,z:this.z,heading:this.heading,
       speed:Math.hypot(this.vx,this.vz),form:this.form,
-      transforming:this.transformTimeLeft>0,grounded:this.grounded,
+      transforming:this.transformTimeLeft>0,transformProgress:this.transformTimeLeft>0?1-this.transformTimeLeft/this.transformSeconds:1,
+      targetForm:this.nextForm,grounded:this.grounded,
       moving:Math.hypot(this.vx,this.vz)>.12
     };
   }
