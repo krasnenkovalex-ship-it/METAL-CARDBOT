@@ -1,5 +1,7 @@
-name: 2D Phaser CI
-on: [push, pull_request]
+name: Phaser 2D CI
+on:
+  push:
+  pull_request:
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -12,8 +14,18 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
       - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: 2d-browser-captures
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: 2d-phaser-preview
           path: dist/
-          retention-days: 14
+          retention-days: 30

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280" viewBox="0 0 200 280"><defs><linearGradient id="blue" x2="1" y2="1"><stop stop-color="#40acff"/><stop offset=".42" stop-color="#175bcc"/><stop offset="1" stop-color="#092d84"/></linearGradient><linearGradient id="metal" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#b4d8ec"/><stop offset="1" stop-color="#577a9a"/></linearGradient><linearGradient id="gold" x2=".6" y2="1"><stop stop-color="#fff3a5"/><stop offset=".5" stop-color="#ffce47"/><stop offset="1" stop-color="#a76d19"/></linearGradient><linearGradient id="visor" x2="0" y2="1"><stop stop-color="#d9ffff"/><stop offset=".4" stop-color="#67eaff"/><stop offset="1" stop-color="#1586c9"/></linearGradient><filter id="g"><feGaussianBlur stdDeviation="2"/></filter></defs><ellipse cx="100" cy="265" rx="64" ry="12" fill="#072747" opacity=".27"/><g stroke="#0b234e" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+<path transform="rotate(-16 76 160)" d="M61 156 L88 159 86 226 53 234 46 204Z" fill="url(#blue)"/><path transform="rotate(14 124 160)" d="M112 160 L140 157 149 208 135 233 109 227Z" fill="url(#blue)"/>
+<path transform="rotate(-16 76 160)" d="M49 218 L91 217 90 253 47 256 34 246Z" fill="url(#metal)"/><path transform="rotate(14 124 160)" d="M107 218 L151 218 169 246 152 257 104 253Z" fill="url(#metal)"/>
+<path transform="rotate(12 54 90)" d="M47 82 L31 88 23 161 41 178 59 148 65 106Z" fill="url(#metal)"/><path transform="rotate(-15 146 90)" d="M151 81 L170 90 183 159 164 177 143 145 133 104Z" fill="url(#metal)"/>
+<path transform="rotate(12 54 90)" d="M23 143 L58 139 62 170 35 188 19 164Z" fill="url(#blue)"/><path transform="rotate(-15 146 90)" d="M138 139 L176 143 184 166 167 190 136 170Z" fill="url(#blue)"/>
+<path d="M63 81 Q99 67 138 81 L148 148 127 181 72 181 51 147Z" fill="url(#metal)"/>
+<path d="M61 84 L140 82 137 137 107 155 68 140Z" fill="url(#blue)"/>
+<path d="M73 93 L92 99 94 129 70 121Z" fill="url(#visor)"/><path d="M108 99 L131 92 133 120 106 129Z" fill="url(#visor)"/>
+<path d="M62 157 L140 157 130 179 71 179Z" fill="url(#metal)"/>
+<path d="M57 60 L70 29 131 29 146 60 136 85 65 85Z" fill="url(#blue)"/>
+<path d="M57 48 L75 19 85 46 100 12 115 46 131 19 146 47" fill="url(#gold)"/>
+<path d="M71 48 L129 48 118 68 82 68Z" fill="url(#visor)"/>
+</g>
+<path d="M92 138L100 131 108 138 105 147 95 147Z" fill="url(#gold)"/><path d="M73 167H126" stroke="#fff" stroke-opacity=".65" stroke-width="2"/>
+<g fill="#ffdf68"><circle cx="29" cy="110" r="8"/><circle cx="170" cy="110" r="8"/><rect x="50" y="239" width="38" height="7" rx="3"/><rect x="110" y="239" width="40" height="7" rx="3"/></g></svg>
