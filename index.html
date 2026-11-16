@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10263b"><title>Меха-лабиринт · Инженерный прототип</title></head>
+<body><div id="app">
+<canvas id="game" aria-label="Трёхмерный лабиринт"></canvas>
+<header><strong>МЕХА-ЛАБИРИНТ · ПРОТОТИП</strong><span id="objective">Подойди к светящемуся устройству</span></header>
+<section id="menu" class="overlay"><article><h1>Экспедиция в Технолес</h1><p>Первый технический уровень: управление и автоматические задания. 3D-модели временные.</p><button id="start">Начать</button></article></section>
+<section id="puzzle" class="overlay hidden" aria-live="polite"><article><h2 id="puzzle-title"></h2><p id="question"></p><div id="answers"></div><p id="feedback" aria-live="polite"></p><button id="cancel">Продолжить позже</button></article></section>
+<footer>W A S D — идти · ПРОБЕЛ — прыгать · Задание запускается автоматически</footer></div>
+<script type="module" src="/src/main.ts"></script></body></html>

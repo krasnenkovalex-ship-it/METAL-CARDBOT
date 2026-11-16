@@ -1,0 +1,6 @@
+asset_id,type,status,source,license,game_use,promo_use
+hero_robot,3d-model,PLANNED,original-commission,not-yet-granted,no,no
+hero_vehicle,3d-model,PLANNED,original-commission,not-yet-granted,no,no
+forest_kit,environment,PLANNED,original-commission,not-yet-granted,no,no
+puzzle_sfx,audio,PLANNED,original-or-cleared,not-yet-granted,no,no
+level_music,audio,PLANNED,original-composition,not-yet-granted,no,no
