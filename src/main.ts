@@ -17,6 +17,7 @@ function el<T extends HTMLElement>(id:string):T{
 const canvas=el<HTMLCanvasElement>('game');
 const objective=el<HTMLElement>('objective');
 const progress=el<HTMLElement>('progress');
+const formLabel=el<HTMLElement>('form');
 const menu=el<HTMLElement>('menu');
 const puzzlePanel=el<HTMLElement>('puzzle');
 const victory=el<HTMLElement>('win');
@@ -26,7 +27,9 @@ const wires=el<HTMLElement>('wires');
 const sockets=el<HTMLElement>('sockets');
 const circuitProgress=el<HTMLElement>('circuit-progress');
 
+const mobile=window.matchMedia('(pointer:coarse)').matches;
 const app=new pc.Application(canvas);
+app.graphicsDevice.maxPixelRatio=Math.min(window.devicePixelRatio||1,mobile?1.25:1.75);
 app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
 app.setCanvasResolution(pc.RESOLUTION_AUTO);
 app.scene.ambientLight=new pc.Color(.65,.72,.81);
@@ -38,6 +41,9 @@ camera.lookAt(0,1,0);
 const sun=new pc.Entity('sun');
 sun.addComponent('light',{type:'directional',intensity:1.8,color:new pc.Color(1,.91,.72),castShadows:false});
 sun.setEulerAngles(52,35,0);app.root.addChild(sun);
+const rim=new pc.Entity('cool-rim-light');
+rim.addComponent('light',{type:'directional',intensity:.55,color:new pc.Color(.55,.75,1),castShadows:false});
+rim.setEulerAngles(130,-40,0);app.root.addChild(rim);
 const fill=new pc.Entity('fill');
 fill.addComponent('light',{type:'omni',intensity:.38,range:25,color:new pc.Color(.61,.83,1)});
 fill.setPosition(0,6,-2);app.root.addChild(fill);
@@ -56,6 +62,9 @@ let started=false;
 let puzzleOpen=false;
 let finished=false;
 let elapsed=0;
+let lastStep=0;
+let wasGrounded=true;
+const cameraLook=new pc.Vec3(0,1.5,0);
 let storyTimer:number|null=null;
 
 function announce(message:string,duration=3900):void{
@@ -101,7 +110,10 @@ function renderCircuit():void{
       const result=circuit.connect(selected,color);
       feedback.textContent=result.message;
       audio.effect(result.correct?'correct':'wrong');
-      if(result.correct)selected=null;
+      if(result.correct){
+        world.energizeWire(selected);
+        selected=null;
+      }
       renderCircuit();
       if(result.completed)finishCircuit();
     });
@@ -111,7 +123,7 @@ function renderCircuit():void{
 }
 function openCircuit():void{
   if(puzzleOpen||finished||circuit.completed)return;
-  puzzleOpen=true;keyboard.clear();selected=null;
+  puzzleOpen=true;keyboard.clear();touch.clear();selected=null;
   feedback.textContent='Найди одинаковые цвета!';
   renderCircuit();puzzlePanel.classList.remove('hidden');
   announce('Энергомост выключен! Соедини три провода.');
@@ -120,10 +132,10 @@ function openCircuit():void{
 function finishCircuit():void{
   world.openGate();trigger.close(true);
   objective.textContent='Собери три энергоячейки';
-  audio.effect('victory');
+  audio.effect('gate');
   announce('Отлично! Ворота раздвигаются и открывают новый путь!',5500);
   speak('Ты справился! Ворота открылись. Найди три энергетических кристалла.');
-  window.setTimeout(()=>{puzzlePanel.classList.add('hidden');puzzleOpen=false;},1050);
+  window.setTimeout(()=>{puzzlePanel.classList.add('hidden');puzzleOpen=false;keyboard.clear();touch.clear();},1050);
 }
 el<HTMLButtonElement>('hint').addEventListener('click',()=>{
   feedback.textContent='Выбирай один цвет слева и точно такой же цвет справа.';
@@ -131,6 +143,7 @@ el<HTMLButtonElement>('hint').addEventListener('click',()=>{
 });
 el<HTMLButtonElement>('cancel').addEventListener('click',()=>{
   puzzlePanel.classList.add('hidden');puzzleOpen=false;selected=null;
+  keyboard.clear();touch.clear();
   trigger.close(false);
   announce('К станции можно вернуться позже.');
 });
@@ -159,29 +172,51 @@ function mergeInputs(a:HeroIntent,b:HeroIntent):HeroIntent{
 }
 app.on('update',(rawDt:number)=>{
   if(!started||finished)return;
-  const dt=Math.min(.05,Math.max(0,rawDt));
+  // Keep simulation time in step with wall time when software WebGL drops frames.
+  const dt=Math.min(.5,Math.max(0,rawDt));
   elapsed+=dt;
   const input=mergeInputs(keyboard.read(),touch.read());
   const wasTransforming=motor.pose.transforming;
   const oldForm=motor.pose.form;
-  motor.update(dt,input,puzzleOpen);
-  // The closed gate blocks the first path, without resetting earned progress.
-  if(!world.gateOpen)motor.constrain(-8,8,-8.6,12);
-  else motor.constrain(-8,8,-30,12);
+  let remaining=dt;
+  let firstStep=true;
+  let found=0;
+  let reachedPortal=false;
+  while(remaining>0){
+    const step=Math.min(.05,remaining);
+    motor.update(step,firstStep?input:{...input,jumpPressed:false,transformPressed:false},puzzleOpen);
+    // Check interactions at each simulation position so a slow frame cannot skip them.
+    if(!world.gatePassable)motor.constrain(-8,8,-8.6,12);
+    else motor.constrain(-8,8,-30,12);
+    const at=motor.pose;
+    if(trigger.update(at.x,at.z,step,!puzzleOpen&&at.grounded&&!at.transforming))openCircuit();
+    found+=world.collect(at.x,at.z);
+    reachedPortal=world.isAtPortal(at.x,at.z);
+    remaining-=step;
+    firstStep=false;
+    if(reachedPortal)break;
+  }
   const pose=motor.pose;
   hero.update(pose,elapsed);
+  if(!wasGrounded&&pose.grounded)audio.effect('land');
+  wasGrounded=pose.grounded;
+  if(pose.moving&&pose.grounded&&!pose.transforming&&elapsed-lastStep>(pose.form==='vehicle'?.26:.37)){
+    audio.effect(pose.form==='vehicle'?'drive':'step');
+    lastStep=elapsed;
+  }
   if(!wasTransforming&&pose.transforming)audio.effect('transform');
   if(wasTransforming&&!pose.transforming&&oldForm!==pose.form){
+    formLabel.textContent=pose.form==='vehicle'?'🚓 Машина':'🤖 Робот';
     announce(pose.form==='vehicle'?'Трансформация завершена! Машина едет быстрее!':'Робот вернулся! Теперь можно прыгать.',2900);
   }
   const cp=camera.getPosition();
   const desiredY=pose.form==='vehicle'?5.1:6.2;
   const t=1-Math.exp(-dt*4.2);
   camera.setPosition(pc.math.lerp(cp.x,pose.x,t),pc.math.lerp(cp.y,desiredY,t),pc.math.lerp(cp.z,pose.z+9.7,t));
-  camera.lookAt(pose.x,pose.form==='vehicle'?.7:1.5,pose.z-2.1);
+  const focusY=pose.form==='vehicle'?.7:1.5;
+  cameraLook.set(pc.math.lerp(cameraLook.x,pose.x,t),pc.math.lerp(cameraLook.y,focusY,t),pc.math.lerp(cameraLook.z,pose.z-2.1,t));
+  camera.lookAt(cameraLook);
   world.update(elapsed,dt);
-  if(trigger.update(pose.x,pose.z,dt,!puzzleOpen&&pose.grounded&&!pose.transforming))openCircuit();
-  const found=world.collect(pose.x,pose.z);
   if(found){
     audio.effect('pickup');
     progress.textContent='⚡ '+world.collectedCount+' / 3';
@@ -191,10 +226,11 @@ app.on('update',(rawDt:number)=>{
       speak('Отлично! Все три кристалла собраны. Найди сияющий портал.');
     }
   }
-  if(world.isAtPortal(pose.x,pose.z)){
+  if(reachedPortal){
     finished=true;victory.classList.remove('hidden');
     audio.effect('victory');
     speak('Миссия выполнена! Ты помог Технолесу. Молодец!');
   }
 });
 window.addEventListener('resize',()=>app.resizeCanvas());
+

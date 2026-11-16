@@ -26,4 +26,6 @@ export class TouchController {
     };
     this.jump=false;this.transform=false;return intent;
   }
+  clear():void{this.held.clear();this.jump=false;this.transform=false;}
 }
+

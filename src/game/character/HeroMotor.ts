@@ -68,7 +68,12 @@ export class HeroMotor {
     const targetSpeed=this.form==='vehicle'?8.6:4.8;
     this.vx=approach(this.vx,dx/length*targetSpeed,dx||dz?10:15,step);
     this.vz=approach(this.vz,dz/length*targetSpeed,dx||dz?10:15,step);
-    if(dx||dz)this.heading=Math.atan2(dx,-dz);
+    if(dx||dz){
+      const targetHeading=Math.atan2(dx,-dz);
+      const difference=Math.atan2(Math.sin(targetHeading-this.heading),Math.cos(targetHeading-this.heading));
+      const turnRate=this.form==='vehicle'?7:12;
+      this.heading+=Math.max(-turnRate*step,Math.min(turnRate*step,difference));
+    }
     if(this.form==='robot'&&this.jumpBuffer>0&&this.coyoteTime>0){
       this.vy=6.8;this.grounded=false;this.coyoteTime=0;this.jumpBuffer=0;
     }
@@ -90,3 +95,4 @@ export class HeroMotor {
     return this.pose;
   }
 }
+
