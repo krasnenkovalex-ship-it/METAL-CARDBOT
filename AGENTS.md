@@ -1,0 +1,12 @@
+# AI development rules — METAL CARDBOT
+- Treat this as a production-oriented TypeScript browser game for a 5-year-old. Quality > feature count.
+- Read docs/01-gdd.md and docs/02-learning.md before gameplay changes.
+- No giant single-file HTML implementations. Keep game systems in src/, authored levels and puzzles in typed modules.
+- Essential learning interactions AUTO-OPEN near the object; no F/E required. Use a proximity dwell and cancellation cooldown/hysteresis.
+- Use KeyboardEvent.code. WASD/Space must work on Russian keyboards too.
+- Every puzzle needs a visible goal, optional spoken hints, retry with no punishment, and a meaningful change in the 3D environment.
+- Never require text reading, microphone permissions, or paid content to complete a mission.
+- Do not add unofficial official franchise models, logos, copyrighted songs, or third-party ripped assets. Track source and license for every asset.
+- No claims of finished levels, measured FPS or real-user testing without evidence.
+- On every PR: npm test, npm run typecheck, npm run build and keyboard/gameplay smoke tests. CI status must be green.
+- Write one precise PR per deliverable. Attach a screenshot and note what was actually verified.
