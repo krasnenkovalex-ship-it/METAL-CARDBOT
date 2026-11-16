@@ -7,6 +7,9 @@ export class BootScene extends Phaser.Scene {
     this.load.svg('forest-back','assets/worlds/forest-mid.svg',{width:2200,height:900});
     this.load.svg('forest-front','assets/worlds/forest-front.svg',{width:2200,height:900});
     this.load.svg('robot','assets/characters/hero-robot.svg',{width:200,height:280});
+    for(let frame=0;frame<4;frame++){
+      this.load.svg('robot-run-'+frame,'assets/characters/hero-run-'+frame+'.svg',{width:200,height:280});
+    }
     this.load.svg('car','assets/characters/hero-car.svg',{width:300,height:150});
     this.load.svg('terrain','assets/worlds/grass-rock-platform.svg',{width:320,height:100});
   }

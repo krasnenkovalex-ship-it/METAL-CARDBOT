@@ -227,6 +227,11 @@ export class PlayScene extends Phaser.Scene{
      }
      this.touch.jump=false;
    }
+   if(!this.car&&!this.changing){
+     const key=Math.abs(body.velocity.x)>18&&body.blocked.down?
+       'robot-run-'+(Math.floor(time/115)%4):'robot';
+     if(this.player.texture.key!==key)this.player.setTexture(key);
+   }
    if(Math.abs(body.velocity.x)>5){this.player.setFlipX(body.velocity.x<0);
      if(!this.car&&!this.changing)this.player.setAngle(Math.sin(time*.019)*2.0);
      else if(this.car&&!this.changing)this.player.setAngle(Math.sin(time*.028)*.8);
