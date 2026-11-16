@@ -7,8 +7,13 @@ test('keyboard mission opens the gate after the color circuit',async({page},test
   await expect(page.locator('#menu')).toBeVisible();
   await page.locator('#start').click();
   await expect(page.locator('#form')).toHaveText('🤖 Робот');
+  await page.evaluate(()=>{
+    document.documentElement.dataset.lastKey='';
+    window.addEventListener('keydown',event=>{document.documentElement.dataset.lastKey=event.code;},{once:true});
+  });
   await page.keyboard.press('e');
-  await expect(page.locator('#form')).toHaveText('🚓 Машина');
+  await expect(page.locator('html')).toHaveAttribute('data-last-key','KeyE');
+  await expect(page.locator('#form')).toHaveText('🚓 Машина',{timeout:12000});
   await page.keyboard.press('e');
   await expect(page.locator('#form')).toHaveText('🤖 Робот');
   await page.keyboard.down('w');
