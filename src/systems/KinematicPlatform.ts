@@ -22,8 +22,10 @@ export class KinematicPlatform{
  ){
   this.body=scene.physics.add.image(opts.x,opts.y-2,'platform-physics');
   this.body.setDisplaySize(opts.width,43);
-  this.body.setVisible(false).setImmovable(true).setAllowGravity(false);
+  this.body.setVisible(false).setImmovable(true);
   const solid=this.body.body as Phaser.Physics.Arcade.Body;
+  solid.setAllowGravity(false);
+  solid.setSize(96,32,true);
   solid.checkCollision.down=false;
   solid.checkCollision.left=false;
   solid.checkCollision.right=false;
