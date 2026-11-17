@@ -1,12 +1,17 @@
 import Phaser from 'phaser';
 import {markComplete} from '../systems/Progress';
 import {audio} from '../systems/Audio';
+import {HEROES,currentHero,chooseHero,type HeroId} from '../data/heroes';
+import {CombatSystem} from '../systems/CombatSystem';
 
 type Mission='bridge'|'generator';
 const W=3850;
 export class PlayScene extends Phaser.Scene{
  private player!:Phaser.Physics.Arcade.Sprite;
- private keys!:Record<'left'|'right'|'arrowLeft'|'arrowRight'|'jump'|'transform',Phaser.Input.Keyboard.Key>;
+ private combat!:CombatSystem;
+ private heroId:HeroId='bluecop';
+ private combatHUD!:Phaser.GameObjects.Text;
+ private keys!:Record<'left'|'right'|'arrowLeft'|'arrowRight'|'jump'|'transform'|'shoot'|'punch'|'one'|'two'|'three',Phaser.Input.Keyboard.Key>;
  private bridgeBody!:Phaser.Physics.Arcade.Image;
  private bridgeArt!:Phaser.GameObjects.TileSprite;
  private gate1!:Phaser.GameObjects.Rectangle;
@@ -24,7 +29,7 @@ export class PlayScene extends Phaser.Scene{
  private objective!:Phaser.GameObjects.Text;
  private formLabel!:Phaser.GameObjects.Text;
  private worldTimer=0;
- private touch={left:false,right:false,jump:false,transform:false};
+ private touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
  private decor:Phaser.GameObjects.GameObject[]=[];
  constructor(){super('Play');}
  private platform(x:number,w:number,y=651):void{
@@ -66,7 +71,7 @@ export class PlayScene extends Phaser.Scene{
  }
  private beginPuzzle(id:Mission):void{
    this.puzzleLocked=id;
-   this.touch={left:false,right:false,jump:false,transform:false};
+   this.touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
    this.player.setVelocity(0,0);
    audio.effect('task');
    this.scene.pause();
@@ -107,10 +112,14 @@ export class PlayScene extends Phaser.Scene{
    make(274,621,'▶','right');
    make(1010,621,'↥','jump',0x355b8e);
    make(1184,621,'⇄','transform',0x78622e);
+   const fire=make(924,504,'✦','shoot',0x235f93);
+   const punch=make(1092,504,'✊','punch',0x84466d);
+   void fire;void punch;
  }
  create(){
    this.completed.clear();this.waitForExit.clear();
-   this.car=false;this.changing=false;this.gems=0;this.hearts=3;this.checkpoint=190;this.puzzleLocked=null;this.worldTimer=0;
+   this.heroId=currentHero();
+   this.car=false;this.changing=false;this.gems=0;this.hearts=HEROES[this.heroId].maxHealth;this.checkpoint=190;this.puzzleLocked=null;this.worldTimer=0;
    this.touch={left:false,right:false,jump:false,transform:false};
    this.cameras.main.setBackgroundColor('#83cde9');
    this.cameras.main.setBounds(0,0,W,720);
@@ -124,7 +133,7 @@ export class PlayScene extends Phaser.Scene{
    for(const x of [920,2640,4360]){
      this.add.image(x,520,'forest-front').setDisplaySize(1710,690).setScrollFactor(.75).setAlpha(.46).setDepth(2);
    }
-   this.player=this.physics.add.sprite(190,480,'robot').setScale(.50).setDepth(12);
+   this.player=this.physics.add.sprite(190,480,this.heroId+'-robot').setScale(.50).setDepth(12);
    this.player.setMaxVelocity(560,1100).setCollideWorldBounds(true).setBounce(.04);
    (this.player.body as Phaser.Physics.Arcade.Body).setSize(112,228,true);
    this.platform(570,1140);this.platform(2615,2370);
@@ -167,15 +176,33 @@ export class PlayScene extends Phaser.Scene{
      arrowLeft:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
      arrowRight:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
      jump:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
-     transform:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E)
+     transform:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+     shoot:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.J),
+     punch:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.K),
+     one:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ONE),
+     two:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TWO),
+     three:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.THREE)
    };
    this.add.rectangle(640,36,1260,61,0x092745,.82).setScrollFactor(0).setDepth(80).setStrokeStyle(2,0x81dbff,.25);
    this.add.text(24,12,'⚡ МЕТАЛ КАРБОТ  ·  ТЕХНОЛЕС',{fontFamily:'system-ui',fontSize:'21px',fontStyle:'bold',color:'#c9f5ff'}).setScrollFactor(0).setDepth(81);
    this.hud=this.add.text(1210,15,'✦ КРИСТАЛЛЫ  0 / 4',{fontSize:'22px',fontFamily:'system-ui',fontStyle:'bold',color:'#ffe491'}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
    this.objective=this.add.text(24,82,'Подойди к синему терминалу',{fontSize:'20px',fontFamily:'system-ui',fontStyle:'bold',color:'#fff6c7',stroke:'#174366',strokeThickness:5}).setScrollFactor(0).setDepth(81);
-   this.formLabel=this.add.text(1220,82,'🤖 РОБОТ  ·  E — ПРЕВРАЩЕНИЕ',{fontSize:'16px',fontFamily:'system-ui',color:'#e7f6ff',stroke:'#174366',strokeThickness:4}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
+   this.formLabel=this.add.text(1220,82,'🤖 '+HEROES[this.heroId].name+'  ·  E — МАШИНА',{fontSize:'16px',fontFamily:'system-ui',color:'#e7f6ff',stroke:'#174366',strokeThickness:4}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
    const mute=this.add.text(1245,82,'♫',{fontSize:'25px',color:'#ccfaff'}).setOrigin(1,0).setScrollFactor(0).setDepth(90).setInteractive({useHandCursor:true});
    mute.on('pointerdown',()=>{const off=audio.toggle();mute.setText(off?'♪':'♫');});
+   this.combat=new CombatSystem(this,this.player,this.heroId,()=>this.hit());
+   this.combat.spawnStageOne();
+   this.combatHUD=this.add.text(24,117,'❤️ '+this.hearts+'/'+HEROES[this.heroId].maxHealth+
+     '   ⚔️ ВРАГИ 0/6  ·  ЛКМ ВЫСТРЕЛ / ПКМ УДАР',
+     {fontFamily:'system-ui',fontSize:'17px',fontStyle:'bold',color:'#fce4aa',
+     stroke:'#183852',strokeThickness:5}).setDepth(81).setScrollFactor(0);
+   this.input.mouse?.disableContextMenu();
+   this.input.on('pointerdown',(pointer:Phaser.Input.Pointer,targets:Phaser.GameObjects.GameObject[])=>{
+     if(targets.length>0||this.puzzleLocked||this.changing)return;
+     const at=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
+     if(pointer.rightButtonDown())this.combat.punch();
+     else if(pointer.leftButtonDown())this.combat.shoot(at.x,at.y);
+   });
    this.makeMobileControls();
    this.game.events.off('puzzle:solved');this.game.events.off('puzzle:cancel');
    this.game.events.on('puzzle:solved',(id:Mission)=>this.solvePuzzle(id));
@@ -183,18 +210,22 @@ export class PlayScene extends Phaser.Scene{
      this.puzzleLocked=null;this.waitForExit.add(id);
    });
    this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{
+     this.combat.destroy();
+     this.input.off('pointerdown');
      this.game.events.off('puzzle:solved');this.game.events.off('puzzle:cancel');
    });
  }
  private hit():void{
    if(this.time.now-this.lastHit<1300)return;
    this.lastHit=this.time.now;this.hearts=Math.max(0,this.hearts-1);
+   this.combatHUD.setText('❤️ '+this.hearts+'/'+HEROES[this.heroId].maxHealth+'   ⚔️ ВРАГИ '+this.combat.summary.defeated+'/'+this.combat.summary.total);
    audio.effect('hit');
    this.cameras.main.shake(200,.005);
    this.player.setTint(0xff9cb0);
    this.time.delayedCall(550,()=>{if(this.player.active)this.player.clearTint();});
    this.player.setPosition(this.checkpoint,442);this.player.setVelocity(0,0);
-   if(this.hearts===0){this.hearts=3;this.objective.setText('Герой восстановился! Попробуй ещё раз!');}
+   if(this.hearts===0){this.hearts=HEROES[this.heroId].maxHealth;
+     this.objective.setText('Герой восстановился! Попробуй ещё раз!');}
  }
  private transform():void{
    if(this.changing)return;this.changing=true;this.player.setVelocityX(0);
@@ -202,34 +233,52 @@ export class PlayScene extends Phaser.Scene{
    this.tweens.add({targets:this.player,scaleX:.35,scaleY:.26,angle:12,duration:185,ease:'Sine.easeIn',
      onComplete:()=>{
        this.car=!this.car;
-       this.player.setTexture(this.car?'car':'robot');
+       this.player.setTexture(this.heroId+(this.car?'-car':'-robot'));
        this.player.setScale(this.car?.52:.50);
        this.player.setAngle(0);
        const body=this.player.body as Phaser.Physics.Arcade.Body;
        body.setSize(this.car?265:112,this.car?120:228,true);
-       this.formLabel.setText(this.car?'🚓 МАШИНА  ·  E — РОБОТ':'🤖 РОБОТ  ·  E — МАШИНА');
+       this.formLabel.setText(this.car?'🚗 '+HEROES[this.heroId].name+' · E — РОБОТ':'🤖 '+HEROES[this.heroId].name+' · E — МАШИНА');
        this.tweens.add({targets:this.player,scaleX:this.car?.57:.50,scaleY:this.car?.57:.50,duration:190,onComplete:()=>this.changing=false});
      }});
  }
- update(time:number){
+ private switchHero(id:HeroId):void{
+   if(this.heroId===id||this.changing||this.puzzleLocked)return;
+   this.heroId=id;chooseHero(id);this.car=false;
+   this.player.setTexture(id+'-robot');this.player.setScale(.50);this.player.setAngle(0);
+   (this.player.body as Phaser.Physics.Arcade.Body).setSize(112,228,true);
+   this.hearts=HEROES[id].maxHealth;this.combat.setHero(id);
+   this.formLabel.setText('🤖 '+HEROES[id].name+' · E — МАШИНА');
+   this.objective.setText('Герой выбран: '+HEROES[id].name+'!');
+   this.cameras.main.flash(170,180,245,255,false);
+ }
+ update(time:number,delta:number){
    if(!this.player.active)return;
    const body=this.player.body as Phaser.Physics.Arcade.Body;
    const left=this.keys.left.isDown||this.keys.arrowLeft.isDown||this.touch.left;
    const right=this.keys.right.isDown||this.keys.arrowRight.isDown||this.touch.right;
-   const speed=this.car?375:270;
+   const speed=this.car?HEROES[this.heroId].vehicleSpeed:HEROES[this.heroId].robotSpeed;
    if(!this.changing){
      if(left)this.player.setVelocityX(-speed);
      else if(right)this.player.setVelocityX(speed);
      else this.player.setVelocityX(body.velocity.x*.72);
+     if(Phaser.Input.Keyboard.JustDown(this.keys.one))this.switchHero('bluecop');
+     if(Phaser.Input.Keyboard.JustDown(this.keys.two))this.switchHero('megatrucker');
+     if(Phaser.Input.Keyboard.JustDown(this.keys.three))this.switchHero('phoenixfire');
      if(Phaser.Input.Keyboard.JustDown(this.keys.transform)||this.touch.transform){this.touch.transform=false;this.transform();}
+     const fire=Phaser.Input.Keyboard.JustDown(this.keys.shoot)||this.touch.shoot;
+     const punch=Phaser.Input.Keyboard.JustDown(this.keys.punch)||this.touch.punch;
+     this.touch.shoot=false;this.touch.punch=false;
+     if(fire){const face=this.player.flipX?-1:1;this.combat.shoot(this.player.x+face*600,this.player.y-34);}
+     if(punch)this.combat.punch();
      if(!this.car&&(Phaser.Input.Keyboard.JustDown(this.keys.jump)||this.touch.jump)&&body.blocked.down){
        this.player.setVelocityY(-690);audio.effect('jump');
      }
      this.touch.jump=false;
    }
    if(!this.car&&!this.changing){
-     const key=Math.abs(body.velocity.x)>18&&body.blocked.down?
-       'robot-run-'+(Math.floor(time/115)%4):'robot';
+     const key=this.heroId==='bluecop'&&Math.abs(body.velocity.x)>18&&body.blocked.down?
+       'robot-run-'+(Math.floor(time/115)%4):this.heroId+'-robot';
      if(this.player.texture.key!==key)this.player.setTexture(key);
    }
    if(Math.abs(body.velocity.x)>5){this.player.setFlipX(body.velocity.x<0);
@@ -237,6 +286,11 @@ export class PlayScene extends Phaser.Scene{
      else if(this.car&&!this.changing)this.player.setAngle(Math.sin(time*.028)*.8);
    }else if(!this.changing)this.player.setAngle(0);
    this.worldTimer=time;
+   this.combat.update(delta,time);
+   const stats=this.combat.summary;
+   this.combatHUD.setText('❤️ '+this.hearts+'/'+HEROES[this.heroId].maxHealth+
+     '   ⚔️ ВРАГИ '+stats.defeated+'/'+stats.total+
+     '   🖱️ ЛКМ — ВЫСТРЕЛ / ПКМ — УДАР');
    for(const [id,x] of [['bridge',875],['generator',2430]] as [Mission,number][]){
      if(this.completed.has(id)||this.puzzleLocked)continue;
      const inRange=Math.abs(this.player.x-x)<82&&Math.abs(this.player.y-518)<185;
