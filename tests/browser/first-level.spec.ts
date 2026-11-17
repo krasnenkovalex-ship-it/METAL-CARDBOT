@@ -8,7 +8,7 @@ test('menu renders, level starts, puzzle auto opens and solves',async({page},tes
  await expect(canvas).toBeVisible();
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Menu')===true,null,{timeout:20000});
  await page.screenshot({path:testInfo.outputPath('forest-menu.png')});
- await page.mouse.click(337,474);
+ await page.mouse.click(640,628);
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Play')===true);
  await page.screenshot({path:testInfo.outputPath('forest-platformer.png')});
  await page.keyboard.down('d');
@@ -31,7 +31,7 @@ test('mobile can start, jump and switch to police car',async({browser},testInfo)
   await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Menu')===true,null,{timeout:20000});
   const canvas=page.locator('canvas');const box=await canvas.boundingBox();
   expect(box).not.toBeNull();
-  await page.touchscreen.tap(box!.x+box!.width*(337/1280),box!.y+box!.height*(474/720));
+  await page.touchscreen.tap(box!.x+box!.width*(640/1280),box!.y+box!.height*(628/720));
   await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Play')===true,null,{timeout:12000});
   const rect=await canvas.boundingBox();
   await page.touchscreen.tap(rect!.x+rect!.width*(1184/1280),rect!.y+rect!.height*(621/720));
@@ -39,4 +39,27 @@ test('mobile can start, jump and switch to police car',async({browser},testInfo)
   await page.screenshot({path:testInfo.outputPath('mobile-car.png')});
   expect(errors).toEqual([]);
  }finally{await context.close();}
+});
+
+test('three heroes are selectable and both mouse combat buttons work',async({page},testInfo)=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('/');
+  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Menu')===true,null,{timeout:20000});
+  await page.mouse.click(974,379);
+  await page.mouse.click(640,628);
+  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Play')===true);
+  await page.waitForFunction(()=>window.__metal2dGame?.scene?.getScene('Play')?.heroId==='phoenixfire');
+  const before=await page.evaluate(()=>window.__metal2dGame?.scene?.getScene('Play')?.combat?.summary);
+  expect(before.total).toBe(6);
+  await page.mouse.click(850,420,{button:'left'});
+  await page.mouse.click(850,420,{button:'right'});
+  const after=await page.evaluate(()=>window.__metal2dGame?.scene?.getScene('Play')?.combat?.summary);
+  expect(after.shots).toBeGreaterThan(before.shots);
+  expect(after.melee).toBeGreaterThan(before.melee);
+  await page.keyboard.press('2');
+  await page.waitForFunction(()=>window.__metal2dGame?.scene?.getScene('Play')?.heroId==='megatrucker');
+  await page.screenshot({path:testInfo.outputPath('mega-trucker-combat.png')});
+  await page.keyboard.press('1');
+  await page.waitForFunction(()=>window.__metal2dGame?.scene?.getScene('Play')?.heroId==='bluecop');
+  expect(errors).toEqual([]);
 });
