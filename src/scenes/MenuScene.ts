@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import {audio} from '../systems/Audio';
 import {HEROES,HERO_IDS,chooseHero,currentHero,type HeroId} from '../data/heroes';
+import {loadProgress} from '../systems/Progress';
+import {ROUNDS,type RoundId} from '../data/rounds';
 
 /** Title screen with three *playable* character choices, not cosmetic cards. */
 export class MenuScene extends Phaser.Scene{
@@ -51,9 +53,30 @@ export class MenuScene extends Phaser.Scene{
      .setInteractive({useHandCursor:true});
    const label=this.add.text(640,628,'▶ НАЧАТЬ ПРИКЛЮЧЕНИЕ',{fontFamily:'system-ui',
      fontSize:'25px',fontStyle:'bold',color:'#193d40'}).setOrigin(.5).setInteractive({useHandCursor:true});
-   const start=()=>{void audio.start().catch(()=>{});this.scene.start('Play');};
+   const start=()=>{void audio.start().catch(()=>{});this.scene.start('Play',{round:selectedRound});};
    button.on('pointerdown',start);label.on('pointerdown',start);
-   this.add.text(640,686,'МЫШЬ: ЛКМ — ВЫСТРЕЛ · ПКМ — УДАР · E — ТРАНСФОРМАЦИЯ · 1/2/3 — СМЕНА ГЕРОЯ',
-     {fontFamily:'system-ui',fontSize:'16px',color:'#c5e5f4'}).setOrigin(.5);
+   const unlocked=Math.min(5,loadProgress().unlocked);
+   let selectedRound=Math.min(5,unlocked) as RoundId;
+   const chips:Phaser.GameObjects.Rectangle[]=[];
+   this.add.text(248,688,'ВЫБЕРИ РАУНД:',{fontFamily:'system-ui',fontSize:'16px',
+     fontStyle:'bold',color:'#c2f7ff'}).setOrigin(.5);
+   for(const [i,round] of ROUNDS.entries()){
+     const x=412+i*105;
+     const open=round.id<=unlocked;
+     const chip=this.add.rectangle(x,687,89,34,
+       !open?0x21354e:round.id===selectedRound?0x61bc83:0x245679,.96)
+       .setStrokeStyle(open?2:1,open?0xc8ffda:0x697e94).setInteractive({useHandCursor:true});
+     const label=this.add.text(x,687,String(round.id),{fontFamily:'system-ui',fontSize:'19px',
+       fontStyle:'bold',color:open?'#ffffff':'#8595a8'}).setOrigin(.5)
+       .setInteractive({useHandCursor:true});
+     chips.push(chip);
+     const choose=()=>{
+       if(!open){selectedLabel.setText('РАУНД '+round.id+' ПОКА ЗАКРЫТ!');return;}
+       selectedRound=round.id;
+       chips.forEach((c,j)=>c.setFillStyle(ROUNDS[j].id===selectedRound?0x61bc83:0x245679));
+       selectedLabel.setText('ВЫБРАН: '+HEROES[currentHero()].name+'  ·  РАУНД '+round.id);
+     };
+     chip.on('pointerdown',choose);label.on('pointerdown',choose);
+   }
  }
 }
