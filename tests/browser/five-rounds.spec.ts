@@ -43,8 +43,9 @@ test('child can solve memory and dial tasks using real mouse inputs',async({page
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.getScene('Play')?.roundId===2);
  await page.evaluate(()=>{
    const game=window.__metal2dGame;
-   game?.scene?.pause('Play');
-   game?.scene?.launch('Puzzle',{id:'echo-memory',round:2});
+   const stage=game?.scene?.getScene('Play');
+   stage?.scene?.pause();
+   stage?.scene?.launch('Puzzle',{id:'echo-memory',round:2});
  });
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Puzzle'));
  // Visual signals [red, yellow, blue] are shown over 2.5s before the player acts.
@@ -56,8 +57,9 @@ test('child can solve memory and dial tasks using real mouse inputs',async({page
  expect(await page.evaluate(()=>window.__metal2dGame?.scene?.getScene('Play')?.completed?.has('echo-memory'))).toBe(true);
  await page.evaluate(()=>{
    const game=window.__metal2dGame;
-   game?.scene?.pause('Play');
-   game?.scene?.launch('Puzzle',{id:'gear-lift',round:2});
+   const stage=game?.scene?.getScene('Play');
+   stage?.scene?.pause();
+   stage?.scene?.launch('Puzzle',{id:'gear-lift',round:2});
  });
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Puzzle'));
  await page.mouse.click(635,400);await page.mouse.click(635,400);
