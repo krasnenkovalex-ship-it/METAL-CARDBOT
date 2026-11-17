@@ -54,7 +54,7 @@ export class CombatSystem {
    const sprite=this.scene.physics.add.sprite(x,y,key).setDepth(11);
    sprite.setScale(boss?1.25:turret?.84:drone?.82:.87).setImmovable(true);
    const body=sprite.body as Phaser.Physics.Arcade.Body;
-   body.setAllowGravity(false);body.setEnable(false);
+   body.setAllowGravity(false);body.enable=false;
    if(kind==='charger')sprite.setTint(0xffae69);
    else if(kind==='hopper')sprite.setTint(0xa6f981);
    else if(turret)sprite.setTint(0xfcaccd);

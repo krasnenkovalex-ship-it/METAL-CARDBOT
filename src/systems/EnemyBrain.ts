@@ -46,7 +46,7 @@ export function decideEnemy(a:EnemyInput,dt:number):EnemyDecision {
  if(a.kind==='charger'||a.kind==='sentinel'){
    const detection=a.kind==='sentinel'?530:290;
    const ready=dist<detection&&a.now>a.modeUntil;
-   if(a.mode==='patrol'&&ready){base.mode='windup';base.modeUntil=a.now+720;}
+   if(a.mode==='patrol'&&ready){base.mode='windup';base.modeUntil=a.now+720;return {...base,warning:true,direction:facing};}
    if(a.mode==='windup'){
      if(a.now<a.modeUntil)return {...base,warning:true,direction:facing};
      base.mode='attack';base.modeUntil=a.now+(a.kind==='sentinel'?780:620);
