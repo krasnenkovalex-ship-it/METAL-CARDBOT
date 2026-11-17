@@ -6,7 +6,7 @@ import {audio} from './Audio';
 type EnemyKind='crawler'|'drone'|'sentinel';
 type Enemy={sprite:Phaser.Physics.Arcade.Sprite;kind:EnemyKind;
   homeX:number;homeY:number;direction:number;hp:number;maxHp:number;
-  armor:number;speed:number;lastAttack:number;alive:boolean};
+  armor:number;speed:number;lastAttack:number;alive:boolean;bar:Phaser.GameObjects.Rectangle};
 type Bullet={sprite:Phaser.GameObjects.Arc;vx:number;vy:number;born:number;damage:number;enemy:boolean};
 export type CombatState={defeated:number;total:number;shots:number;melee:number;enemyHits:number};
 
@@ -42,18 +42,11 @@ export class CombatSystem {
     sprite.setImmovable(true);
     (sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     const hp=kind==='sentinel'?6:kind==='drone'?2:3;
+    const bar=this.scene.add.rectangle(x,y-(kind==='sentinel'?94:65),kind==='sentinel'?130:64,7,0x68e89d).setDepth(12);
     this.enemies.push({sprite,kind,homeX:x,homeY:y,direction:-1,
       hp,maxHp:hp,armor:kind==='sentinel'?1:0,
       speed:kind==='sentinel'?48:kind==='drone'?56:64,
-      lastAttack:0,alive:true});
-    const bar=this.scene.add.rectangle(x,y-(kind==='sentinel'?94:65),kind==='sentinel'?130:64,7,0x6a223e).setDepth(11);
-    bar.setData('enemy-index',this.enemies.length-1);
-    // Bars are kept in sync to damage through event callbacks.
-    this.scene.events.on('update',()=>{
-      if(!sprite.active){bar.destroy();return;}
-      bar.setPosition(sprite.x,sprite.y-(kind==='sentinel'?94:65));
-      bar.setDisplaySize((kind==='sentinel'?130:64)*Math.max(0,this.enemies[this.enemies.length-1]?.hp??hp)/hp,7);
-    });
+      lastAttack:0,alive:true,bar});
   }
   spawnStageOne():void{
     this.spawn(470,531,'crawler');
@@ -78,12 +71,14 @@ export class CombatSystem {
     if(!e.alive)return;
     const damage=damageAfterArmor(raw,e.armor);
     e.hp=Math.max(0,e.hp-damage);
+    e.bar.setDisplaySize((e.kind==='sentinel'?130:64)*e.hp/e.maxHp,7);
     this.enemyHits++;
     this.burst(e.sprite.x,e.sprite.y,HEROES[this.hero].projectileColor);
     e.sprite.setTintFill(0xffffff);
     this.scene.time.delayedCall(115,()=>{if(e.sprite.active)e.sprite.clearTint();});
     if(e.hp===0){
       e.alive=false;this.defeated++;
+      e.bar.destroy();
       this.burst(e.sprite.x,e.sprite.y,0xffe78b,true);
       audio.effect('pickup');
       this.scene.tweens.add({targets:e.sprite,alpha:0,scaleX:1.9,scaleY:1.9,
@@ -144,6 +139,7 @@ export class CombatSystem {
         e.sprite.y=e.homeY+(e.kind==='sentinel'?Math.sin(now*.003)*7:0);
       }
       e.sprite.setFlipX(e.direction>0);
+      e.bar.setPosition(e.sprite.x,e.sprite.y-(e.kind==='sentinel'?94:65));
       if(hitDistance(this.player.x,this.player.y,e.sprite.x,e.sprite.y)<(e.kind==='sentinel'?102:64)){
         if(now-e.lastAttack>1100){e.lastAttack=now;this.onPlayerDamage();}
       }
@@ -176,7 +172,7 @@ export class CombatSystem {
     }
   }
   destroy():void{
-    for(const e of this.enemies)if(e.sprite.active)e.sprite.destroy();
+    for(const e of this.enemies){if(e.sprite.active)e.sprite.destroy();if(e.bar.active)e.bar.destroy();}
     for(const p of this.bullets)if(p.sprite.active)p.sprite.destroy();
     this.enemies.length=0;this.bullets.length=0;
   }
