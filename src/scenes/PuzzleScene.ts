@@ -78,7 +78,39 @@ export class PuzzleScene extends Phaser.Scene{
    const sequence=c.sequence??[0,1];
    const colors=[0xf46b79,0x42b9f8,0xffd765];
    const pads:Phaser.GameObjects.Arc[]=[];
-   let showing=true;let index=0;let attempts=0;
+   let showing=true;let index=0;let epoch=0;let active=true;
+   const timers=new Set<number>();
+   const later=(delay:number,fn:()=>void)=>{
+     const id=window.setTimeout(()=>{
+       timers.delete(id);
+       if(active)fn();
+     },delay);
+     timers.add(id);return id;
+   };
+   this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{
+     active=false;
+     for(const id of timers)window.clearTimeout(id);
+     timers.clear();
+   });
+   const flash=(i:number)=>{
+     const pad=pads[i];
+     if(!pad?.active)return;
+     this.tweens.add({targets:pad,scale:1.24,duration:150,yoyo:true});
+     audio.effect('task');
+   };
+   const playback=()=>{
+     const token=++epoch;
+     showing=true;this.memoryReady=false;index=0;
+     this.status.setText('ЗАПОМИНАЙ ОГОНЬКИ ...').setColor('#9deaff');
+     for(const [i,pad] of sequence.entries()){
+       later(650*i+320,()=>{if(epoch===token)flash(pad);});
+     }
+     later(650*sequence.length+460,()=>{
+       if(epoch!==token||this.solved)return;
+       showing=false;this.memoryReady=true;
+       this.status.setText('Теперь повтори последовательность!').setColor('#d7ff9b');
+     });
+   };
    colors.forEach((color,i)=>{
      const pad=this.add.circle(390+i*250,390,71,color,.76)
        .setStrokeStyle(6,0xd9faff).setDepth(503).setInteractive({useHandCursor:true});
@@ -87,44 +119,26 @@ export class PuzzleScene extends Phaser.Scene{
      }).setOrigin(.5).setDepth(504);
      pad.on('pointerdown',()=>{
        if(this.solved||showing)return;
-       const expected=sequence[index];
-       this.tweens.add({targets:pad,scale:1.15,duration:110,yoyo:true});
-       if(i===expected){
+       this.tweens.add({targets:pad,scale:1.13,duration:110,yoyo:true});
+       if(i===sequence[index]){
          index++;
          this.status.setText('Правильно! '+index+' из '+sequence.length).setColor('#c6ff97');
          audio.effect('pickup');
-         if(index===sequence.length)this.finish();
+         if(index===sequence.length){
+           this.memoryReady=false;this.finish();
+         }
        }else{
-         attempts++;index=0;showing=true;this.memoryReady=false;
-         this.status.setText('Попробуй ещё. Смотри внимательно!').setColor('#ffe7a2');
-         this.time.delayedCall(930,()=>playback());
+         index=0;showing=true;this.memoryReady=false;
+         this.status.setText('Ничего страшного! Посмотри ещё раз.').setColor('#ffe7a2');
+         later(850,playback);
        }
      });
      pads.push(pad);
    });
-   const flash=(i:number)=>{
-     const pad=pads[i];
-     pad.setAlpha(1);
-     this.tweens.add({targets:pad,scale:1.24,duration:150,yoyo:true});
-     audio.effect('task');
-   };
-   const playback=()=>{
-     if(!this.scene.isActive('Puzzle'))return;
-     showing=true;this.memoryReady=false;index=0;
-     this.status.setText('ЗАПОМИНАЙ ОГОНЬКИ ...').setColor('#9deaff');
-     sequence.forEach((pad,index)=>{
-       this.time.delayedCall(670*index+400,()=>flash(pad));
-     });
-     this.time.delayedCall(670*sequence.length+460,()=>{
-       showing=false;this.memoryReady=true;this.status.setText('Теперь повтори последовательность!').setColor('#d7ff9b');
-     });
-   };
-   const repeat=this.button(640,500,280,54,'🔁 ПОКАЗАТЬ ЕЩЁ',0x225e93,()=>{
-     if(this.solved)return;
-     showing=true;playback();
+   this.button(640,500,280,54,'🔁 ПОКАЗАТЬ ЕЩЁ',0x225e93,()=>{
+     if(!this.solved)playback();
    },19);
-   void repeat;void attempts;
-   this.time.delayedCall(390,playback);
+   later(400,playback);
  }
  private createWires(c:Challenge):void{
    const colors:[string,number,string][]=[['КРАСНЫЙ',0xe75e76,'🔴'],['СИНИЙ',0x397edc,'🔵'],['ЖЁЛТЫЙ',0xe6bd4e,'🟡']];
