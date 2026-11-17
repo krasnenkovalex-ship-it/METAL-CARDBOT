@@ -74,7 +74,7 @@ export class CombatSystem {
     e.bar.setDisplaySize((e.kind==='sentinel'?130:64)*e.hp/e.maxHp,7);
     this.enemyHits++;
     this.burst(e.sprite.x,e.sprite.y,HEROES[this.hero].projectileColor);
-    e.sprite.setTintFill(0xffffff);
+    e.sprite.setTintFill();
     this.scene.time.delayedCall(115,()=>{if(e.sprite.active)e.sprite.clearTint();});
     if(e.hp===0){
       e.alive=false;this.defeated++;
