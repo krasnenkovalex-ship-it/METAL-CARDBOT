@@ -4,6 +4,10 @@ export class BootScene extends Phaser.Scene {
   constructor(){super('Boot');}
   preload(){
     this.load.svg('sky','assets/worlds/forest-sky.svg',{width:1920,height:1080});
+    this.load.svg('sky-valley','assets/worlds/sky-valley.svg',{width:1920,height:1080});
+    this.load.svg('gear-factory','assets/worlds/gear-factory.svg',{width:1920,height:1080});
+    this.load.svg('ice-caves','assets/worlds/ice-caves.svg',{width:1920,height:1080});
+    this.load.svg('storm-citadel','assets/worlds/storm-citadel.svg',{width:1920,height:1080});
     this.load.svg('forest-back','assets/worlds/forest-mid.svg',{width:2200,height:900});
     this.load.svg('forest-front','assets/worlds/forest-front.svg',{width:2200,height:900});
     this.load.svg('robot','assets/characters/hero-robot.svg',{width:200,height:280});
