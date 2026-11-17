@@ -1,25 +1,37 @@
 import {test,expect} from '@playwright/test';
 declare global{interface Window{__metal2dGame?:any}}
-test('menu renders, level starts, puzzle auto opens and solves',async({page},testInfo)=>{
- const errors:string[]=[];
- page.on('pageerror',error=>errors.push(error.message));
+test('first reactor is solved in the level using real mouse clicks',async({page},testInfo)=>{
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto('/');
- const canvas=page.locator('canvas');
- await expect(canvas).toBeVisible();
+ await expect(page.locator('canvas')).toBeVisible();
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Menu')===true,null,{timeout:20000});
- await page.screenshot({path:testInfo.outputPath('forest-menu.png')});
  await page.mouse.click(640,628);
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Play')===true);
- await page.screenshot({path:testInfo.outputPath('forest-platformer.png')});
  await page.keyboard.down('d');
- try{await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Puzzle')===true,null,{timeout:16000});}
- finally{await page.keyboard.up('d');}
- await page.screenshot({path:testInfo.outputPath('first-logic-task.png')});
- await page.mouse.click(388,407);
- await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Play')===true,null,{timeout:8000});
- const unlocked=await page.evaluate(()=>window.__metal2dGame?.scene?.getScene('Play')?.completed?.has('bridge'));
- expect(unlocked).toBe(true);
- await page.screenshot({path:testInfo.outputPath('bridge-open.png')});
+ try{
+  await page.waitForFunction(()=>{
+   const scene=window.__metal2dGame?.scene?.getScene('Play');
+   return scene?.worldPuzzle?.active===true && scene?.worldPuzzle?.id==='bridge';
+  },null,{timeout:16000});
+ }finally{await page.keyboard.up('d');}
+ await page.screenshot({path:testInfo.outputPath('world-reactor-puzzle.png')});
+ const clickNode=async(side:'left'|'right',i:number)=>{
+  const position=await page.evaluate(({side,index})=>{
+    const scene=window.__metal2dGame?.scene?.getScene('Play');
+    const point=scene.worldPuzzle.positions[side][index];
+    const cam=scene.cameras.main;
+    const p0=cam.getWorldPoint(0,0),p1=cam.getWorldPoint(1280,720);
+    return {x:Math.round((point[0]-p0.x)/(p1.x-p0.x)*1280),
+      y:Math.round((point[1]-p0.y)/(p1.y-p0.y)*720)};
+  },{side,index:i});
+  await page.mouse.click(position.x,position.y);
+ };
+ for(const [i,j] of [[0,1],[1,2],[2,0]]){
+   await clickNode('left',i);
+   await clickNode('right',j);
+ }
+ await page.waitForFunction(()=>window.__metal2dGame?.scene?.getScene('Play')?.completed?.has('bridge')===true,null,{timeout:8000});
+ await page.screenshot({path:testInfo.outputPath('reactor-bridge-open.png')});
  expect(errors).toEqual([]);
 });
 test('mobile can start, jump and switch to police car',async({browser},testInfo)=>{
@@ -62,4 +74,21 @@ test('three heroes are selectable and both mouse combat buttons work',async({pag
   await page.keyboard.press('1');
   await page.waitForFunction(()=>window.__metal2dGame?.scene?.getScene('Play')?.heroId==='bluecop');
   expect(errors).toEqual([]);
+});
+
+test('spring fires from actual foot contact, not from distant proximity',async({page})=>{
+ await page.goto('/');
+ await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Menu'),null,{timeout:20000});
+ await page.mouse.click(640,628);
+ await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Play'),null,{timeout:8000});
+ await page.evaluate(()=>{
+   const stage=window.__metal2dGame?.scene?.getScene('Play');
+   // Component setup: this is NOT a complete level walkthrough.
+   stage.player.setPosition(2030,529);
+   stage.player.setVelocity(0,0);
+ });
+ await page.waitForFunction(()=>{
+   const body=window.__metal2dGame?.scene?.getScene('Play')?.player?.body;
+   return body?.velocity?.y< -550;
+ },null,{timeout:5000});
 });

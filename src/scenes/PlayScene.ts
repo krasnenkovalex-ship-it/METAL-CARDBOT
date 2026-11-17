@@ -4,6 +4,10 @@ import {audio} from '../systems/Audio';
 import {HEROES,currentHero,chooseHero,type HeroId} from '../data/heroes';
 import {CombatSystem} from '../systems/CombatSystem';
 import {getRound,canFinishRound,type RoundDefinition,type RoundId} from '../data/rounds';
+import {PlayerMotor} from '../systems/PlayerMotor';
+import {KinematicPlatform} from '../systems/KinematicPlatform';
+import {SpringPad} from '../systems/SpringPad';
+import {WorldPuzzle} from '../systems/WorldPuzzle';
 
 type Mission=string;
 const W=3850;
@@ -15,9 +19,10 @@ export class PlayScene extends Phaser.Scene{
  private round!:RoundDefinition;
  private switchActivated=false;
  private switchCore!:Phaser.GameObjects.Arc;
- private movingPlatform!:Phaser.Physics.Arcade.Image;
- private movingArt!:Phaser.GameObjects.TileSprite;
- private lastSpring=0;
+ private readonly motor=new PlayerMotor();
+ private readonly movingPlatforms:KinematicPlatform[]=[];
+ private spring!:SpringPad;
+ private worldPuzzle!:WorldPuzzle;
  private lastStormPulse=0;
  private finishGuard=false;
  private combatHUD!:Phaser.GameObjects.Text;
@@ -82,17 +87,10 @@ export class PlayScene extends Phaser.Scene{
      stroke:'#09293e',strokeThickness:5}).setOrigin(.5).setScrollFactor(0).setDepth(80);
    this.tweens.add({targets:caption,alpha:0,duration:700,delay:3300});
    // Physical activity varies by round: spring jump, aerial lift, conveyor, ice and storms.
-   const pad=this.add.rectangle(2030,588,125,27,color,.9).setStrokeStyle(5,0xdffff6)
-     .setDepth(6);
-   const label=this.add.text(2030,571,biome==='factory'?'⇢ УСКОРИТЕЛЬ':biome==='ice'?'❄ ЛЕДЯНОЙ ТРАМПЛИН':
-     biome==='sky'?'✦ ВЕТЕР':biome==='storm'?'⚡ ПРЫЖОК':'★ ПРУЖИНА',
-     {fontFamily:'system-ui',fontSize:'15px',fontStyle:'bold',color:'#e5fdff',
-       stroke:'#09283c',strokeThickness:4}).setOrigin(.5).setDepth(7);
-   this.tweens.add({targets:pad,scaleY:1.27,duration:470,yoyo:true,repeat:-1});
-   void label;
+   // Physical spring is added after the hero and level surfaces exist.
  }
  private addBiomePlatforms():void{
-   // Five truly different traversal patterns: optional high routes and distinct movers.
+   // Distinct upper paths; static top-only ledges or velocity-based kinematic platforms.
    type Platform=[number,number,number,boolean];
    const stages:Record<string,Platform[]>={
      forest:[[515,476,190,false],[3260,455,210,false]],
@@ -102,18 +100,20 @@ export class PlayScene extends Phaser.Scene{
      storm:[[560,452,210,false],[1840,462,250,true],[2940,434,200,false]]
    };
    for(const [x,y,w,moving] of stages[this.round.biome]){
-     const top=this.add.tileSprite(x,y,w,62,'terrain').setDepth(5).setTint(this.round.color);
-     const solid=this.physics.add.staticImage(x,y-2,'platform-physics')
-       .setDisplaySize(w,43).refreshBody().setVisible(false);
-     const body=solid.body as Phaser.Physics.Arcade.StaticBody;
-     body.checkCollision.left=false;body.checkCollision.right=false;body.checkCollision.down=false;
-     this.physics.add.collider(this.player,solid);
-     this.add.rectangle(x,y-35,w,8,this.round.color,.79).setDepth(6);
      if(moving){
-       this.tweens.add({targets:[top,solid],y:y-61,
-         duration:1600+(this.roundId*120),repeat:-1,yoyo:true,ease:'Sine.inOut',
-         onUpdate:()=>solid.refreshBody()});
+       this.movingPlatforms.push(new KinematicPlatform(this,this.player,{
+         x,y,width:w,axis:'y',range:54,
+         periodMs:3500+this.roundId*230,tint:this.round.color
+       }));
+     }else{
+       this.add.tileSprite(x,y,w,62,'terrain').setDepth(5).setTint(this.round.color);
+       const solid=this.physics.add.staticImage(x,y-2,'platform-physics')
+         .setDisplaySize(w,43).refreshBody().setVisible(false);
+       const body=solid.body as Phaser.Physics.Arcade.StaticBody;
+       body.checkCollision.left=false;body.checkCollision.right=false;body.checkCollision.down=false;
+       this.physics.add.collider(this.player,solid);
      }
+     this.add.rectangle(x,y-35,w,8,this.round.color,.58).setDepth(6);
    }
  }
  private addWorldSwitch():void{
@@ -149,19 +149,10 @@ export class PlayScene extends Phaser.Scene{
  private applyGimmick(time:number,body:Phaser.Physics.Arcade.Body,delta:number):void{
    if(!this.player.active||this.puzzleLocked)return;
    const x=this.player.x;
-   if(Math.abs(x-2030)<66&&Math.abs(this.player.y-524)<125&&
-     body.blocked.down&&time-this.lastSpring>1150){
-     if(this.round.gimmick==='spring'||this.round.gimmick==='wind'||
-       this.round.gimmick==='ice-slide'||this.round.gimmick==='storm-pulse'){
-       this.lastSpring=time;
-       this.player.setVelocityY(-850);
-       audio.effect('jump');this.cameras.main.flash(65,80,190,255,false);
-     }
-   }
    if(this.round.gimmick==='conveyor'&&body.blocked.down&&x>1810&&x<2330){
-     this.player.setVelocityX(body.velocity.x+35);
+     this.player.setVelocityX(body.velocity.x+220*Math.min(delta/1000,.05));
    }else if(this.round.gimmick==='wind'&&this.player.y<540){
-     this.player.setVelocityX(body.velocity.x+Math.sin(time*.0013)*22);
+     this.player.setVelocityX(body.velocity.x+130*Math.sin(time*.0013)*Math.min(delta/1000,.05));
    }
    if(this.round.gimmick==='storm-pulse'&&time-this.lastStormPulse>5300){
      this.lastStormPulse=time;
@@ -217,8 +208,12 @@ export class PlayScene extends Phaser.Scene{
    this.touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
    this.player.setVelocity(0,0);
    audio.effect('task');
-   this.scene.pause();
-   this.scene.launch('Puzzle',{id,round:this.roundId});
+   if(this.roundId===1&&(id==='bridge'||id==='generator')){
+     this.worldPuzzle.start(id,id==='bridge'?875:2430);
+   }else{
+     this.scene.pause();
+     this.scene.launch('Puzzle',{id,round:this.roundId});
+   }
  }
  private solvePuzzle(id:Mission):void{
    if(this.completed.has(id))return;
@@ -264,7 +259,8 @@ export class PlayScene extends Phaser.Scene{
  }
  create(){
    this.completed.clear();this.waitForExit.clear();
-   this.finishGuard=false;this.switchActivated=false;this.lastSpring=0;this.lastStormPulse=0;
+   this.finishGuard=false;this.switchActivated=false;this.lastStormPulse=0;
+   this.motor.reset();this.movingPlatforms.length=0;
    this.heroId=currentHero();
    this.car=false;this.changing=false;this.gems=0;this.hearts=HEROES[this.heroId].maxHealth;this.checkpoint=190;this.puzzleLocked=null;this.worldTimer=0;
    this.touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
@@ -290,22 +286,23 @@ export class PlayScene extends Phaser.Scene{
    this.platform(570,1140);this.platform(2615,2370);
    this.decorateRound();
    this.addBiomePlatforms();
+   this.spring=new SpringPad(this,this.player,{x:2030,y:606,width:135,force:825,color:this.round.color});
    this.bridgeArt=this.add.tileSprite(1285,651,290,100,'terrain').setDepth(5).setVisible(false);
    this.bridgeBody=this.physics.add.staticImage(1285,651,'platform-physics').setDisplaySize(290,100);
    this.bridgeBody.refreshBody().disableBody(true,true);
    this.physics.add.collider(this.player,this.bridgeBody);
    // The raised shortcut holds a collectible that takes a deliberate jump.
-   const high=this.physics.add.staticImage(2170,492,'platform-physics')
-     .setDisplaySize(330,45).refreshBody().setVisible(false);
-   this.movingArt=this.add.tileSprite(2170,495,330,66,'terrain').setDepth(5);
-   this.movingPlatform=high;
-   const liftBody=high.body as Phaser.Physics.Arcade.StaticBody;
-   liftBody.checkCollision.left=false;liftBody.checkCollision.right=false;liftBody.checkCollision.down=false;
-   this.physics.add.collider(this.player,high);
    if(this.round.biome==='sky'||this.round.biome==='ice'){
-     this.tweens.add({targets:[high,this.movingArt],x:2270,duration:3100,
-       repeat:-1,yoyo:true,ease:'Sine.inOut',
-       onUpdate:()=>high.refreshBody()});
+     this.movingPlatforms.push(new KinematicPlatform(this,this.player,{
+       x:2170,y:494,width:330,axis:'x',range:98,periodMs:4000,tint:this.round.color
+     }));
+   }else{
+     const high=this.physics.add.staticImage(2170,492,'platform-physics')
+       .setDisplaySize(330,45).refreshBody().setVisible(false);
+     this.add.tileSprite(2170,495,330,66,'terrain').setDepth(5);
+     const body=high.body as Phaser.Physics.Arcade.StaticBody;
+     body.checkCollision.left=false;body.checkCollision.right=false;body.checkCollision.down=false;
+     this.physics.add.collider(this.player,high);
    }
    const high2=this.physics.add.staticImage(3410,479,'platform-physics').setDisplaySize(230,44).refreshBody().setVisible(false);
    this.add.tileSprite(3410,479,230,65,'terrain').setDepth(5);
@@ -354,6 +351,10 @@ export class PlayScene extends Phaser.Scene{
    this.formLabel=this.add.text(1220,82,'🤖 '+HEROES[this.heroId].name+'  ·  E — МАШИНА',{fontSize:'16px',fontFamily:'system-ui',color:'#e7f6ff',stroke:'#174366',strokeThickness:4}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
    const mute=this.add.text(1245,82,'♫',{fontSize:'25px',color:'#ccfaff'}).setOrigin(1,0).setScrollFactor(0).setDepth(90).setInteractive({useHandCursor:true});
    mute.on('pointerdown',()=>{const off=audio.toggle();mute.setText(off?'♪':'♫');});
+   this.worldPuzzle=new WorldPuzzle(this,
+     id=>this.solvePuzzle(id),
+     id=>{this.puzzleLocked=null;this.waitForExit.add(id);}
+   );
    this.combat=new CombatSystem(this,this.player,this.heroId,()=>this.hit());
    this.combat.spawnRound(this.round.enemies,this.roundId);
    this.combat.setBossShield(this.round.bossRequired);
@@ -376,7 +377,10 @@ export class PlayScene extends Phaser.Scene{
      this.puzzleLocked=null;this.waitForExit.add(id);
    });
    this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{
+     this.worldPuzzle.close();
      this.combat.destroy();
+     for(const moving of this.movingPlatforms)moving.destroy();
+     this.movingPlatforms.length=0;
      this.input.off('pointerdown');
      this.game.events.off('puzzle:solved');this.game.events.off('puzzle:cancel');
    });
@@ -410,7 +414,7 @@ export class PlayScene extends Phaser.Scene{
  }
  private switchHero(id:HeroId):void{
    if(this.heroId===id||this.changing||this.puzzleLocked)return;
-   this.heroId=id;chooseHero(id);this.car=false;
+   this.heroId=id;chooseHero(id);this.car=false;this.motor.reset();
    this.player.setTexture(id+'-robot');this.player.setScale(.50);this.player.setAngle(0);
    (this.player.body as Phaser.Physics.Arcade.Body).setSize(112,228,true);
    this.hearts=HEROES[id].maxHealth;this.combat.setHero(id);
@@ -420,14 +424,28 @@ export class PlayScene extends Phaser.Scene{
  }
  update(time:number,delta:number){
    if(!this.player.active)return;
+   if(this.worldPuzzle?.active){
+      this.player.setVelocity(0,0);
+      return;
+   }
    const body=this.player.body as Phaser.Physics.Arcade.Body;
    const left=this.keys.left.isDown||this.keys.arrowLeft.isDown||this.touch.left;
    const right=this.keys.right.isDown||this.keys.arrowRight.isDown||this.touch.right;
-   const speed=this.car?HEROES[this.heroId].vehicleSpeed:HEROES[this.heroId].robotSpeed;
    if(!this.changing){
-     if(left)this.player.setVelocityX(-speed);
-     else if(right)this.player.setVelocityX(speed);
-     else this.player.setVelocityX(body.velocity.x*(this.round.gimmick==='ice-slide'?.93:.72));
+     const jumpPressed=Phaser.Input.Keyboard.JustDown(this.keys.jump)||this.touch.jump;
+     const out=this.motor.step({
+       now:time,dt:delta/1000,
+       axis:(right?1:0)-(left?1:0) as -1|0|1,
+       grounded:body.blocked.down||body.touching.down,
+       jumpPressed,jumpHeld:this.keys.jump.isDown||this.touch.jump,
+       canJump:!this.car,velocityX:body.velocity.x,velocityY:body.velocity.y,
+       maxSpeed:this.car?HEROES[this.heroId].vehicleSpeed:HEROES[this.heroId].robotSpeed,
+       slippery:this.round.gimmick==='ice-slide'
+     });
+     this.player.setVelocityX(out.velocityX);
+     if(out.jumped){this.player.setVelocityY(out.velocityY);audio.effect('jump');}
+     else if(out.velocityY!==body.velocity.y)this.player.setVelocityY(out.velocityY);
+     this.touch.jump=false;
      if(Phaser.Input.Keyboard.JustDown(this.keys.one))this.switchHero('bluecop');
      if(Phaser.Input.Keyboard.JustDown(this.keys.two))this.switchHero('megatrucker');
      if(Phaser.Input.Keyboard.JustDown(this.keys.three))this.switchHero('phoenixfire');
@@ -437,10 +455,7 @@ export class PlayScene extends Phaser.Scene{
      this.touch.shoot=false;this.touch.punch=false;
      if(fire){const face=this.player.flipX?-1:1;this.combat.shoot(this.player.x+face*600,this.player.y-34);}
      if(punch)this.combat.punch();
-     if(!this.car&&(Phaser.Input.Keyboard.JustDown(this.keys.jump)||this.touch.jump)&&body.blocked.down){
-       this.player.setVelocityY(-690);audio.effect('jump');
-     }
-     this.touch.jump=false;
+
    }
    if(!this.car&&!this.changing){
      const key=this.heroId==='bluecop'&&Math.abs(body.velocity.x)>18&&body.blocked.down?
@@ -453,6 +468,8 @@ export class PlayScene extends Phaser.Scene{
    }else if(!this.changing)this.player.setAngle(0);
    this.worldTimer=time;
    this.applyGimmick(time,body,delta);
+   for(const platform of this.movingPlatforms)platform.update(time,delta/1000);
+   if(this.spring.update(time))audio.effect('jump');
    this.combat.update(delta,time);
    const stats=this.combat.summary;
    this.combatHUD.setText('❤️ '+this.hearts+'/'+HEROES[this.heroId].maxHealth+
