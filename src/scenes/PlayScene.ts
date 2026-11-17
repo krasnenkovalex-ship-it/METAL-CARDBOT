@@ -3,13 +3,21 @@ import {markComplete} from '../systems/Progress';
 import {audio} from '../systems/Audio';
 import {HEROES,currentHero,chooseHero,type HeroId} from '../data/heroes';
 import {CombatSystem} from '../systems/CombatSystem';
+import {getRound,canFinishRound,type RoundDefinition,type RoundId} from '../data/rounds';
 
-type Mission='bridge'|'generator';
+type Mission=string;
 const W=3850;
 export class PlayScene extends Phaser.Scene{
  private player!:Phaser.Physics.Arcade.Sprite;
  private combat!:CombatSystem;
  private heroId:HeroId='bluecop';
+ private roundId:RoundId=1;
+ private round!:RoundDefinition;
+ private switchActivated=false;
+ private switchCore!:Phaser.GameObjects.Arc;
+ private lastSpring=0;
+ private lastStormPulse=0;
+ private finishGuard=false;
  private combatHUD!:Phaser.GameObjects.Text;
  private keys!:Record<'left'|'right'|'arrowLeft'|'arrowRight'|'jump'|'transform'|'shoot'|'punch'|'one'|'two'|'three',Phaser.Input.Keyboard.Key>;
  private bridgeBody!:Phaser.Physics.Arcade.Image;
@@ -32,6 +40,11 @@ export class PlayScene extends Phaser.Scene{
  private touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
  private decor:Phaser.GameObjects.GameObject[]=[];
  constructor(){super('Play');}
+ init(data:{round?:number}={}){
+   const n=Number(data.round??1);
+   this.roundId=(Number.isInteger(n)&&n>=1&&n<=5?n:1) as RoundId;
+   this.round=getRound(this.roundId);
+ }
  private platform(x:number,w:number,y=651):void{
    this.add.tileSprite(x,y,w,100,'terrain').setDepth(5);
    const ground=this.physics.add.staticImage(x,y,'platform-physics');
@@ -118,25 +131,30 @@ export class PlayScene extends Phaser.Scene{
  }
  create(){
    this.completed.clear();this.waitForExit.clear();
+   this.finishGuard=false;this.switchActivated=false;this.lastSpring=0;this.lastStormPulse=0;
    this.heroId=currentHero();
    this.car=false;this.changing=false;this.gems=0;this.hearts=HEROES[this.heroId].maxHealth;this.checkpoint=190;this.puzzleLocked=null;this.worldTimer=0;
    this.touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
    this.cameras.main.setBackgroundColor('#83cde9');
    this.cameras.main.setBounds(0,0,W,720);
    this.physics.world.setBounds(0,0,W,720);
-   this.add.image(640,360,'sky').setDisplaySize(1280,720).setScrollFactor(0).setDepth(-30);
+   this.add.image(640,360,'sky').setDisplaySize(1280,720).setScrollFactor(0).setDepth(-30)
+     .setTint(this.round.skyTint);
    for(const x of [850,2580,4310]){
-     this.add.image(x,465,'forest-back').setDisplaySize(1740,700).setScrollFactor(.26).setAlpha(.65).setDepth(-20);
+     this.add.image(x,465,'forest-back').setDisplaySize(1740,700).setScrollFactor(.26)
+       .setTint(this.round.backTint).setAlpha(.65).setDepth(-20);
    }
    const fog=this.add.rectangle(0,0,W,720,0xffffff,.10).setOrigin(0).setDepth(-10);
    void fog;
    for(const x of [920,2640,4360]){
-     this.add.image(x,520,'forest-front').setDisplaySize(1710,690).setScrollFactor(.75).setAlpha(.46).setDepth(2);
+     this.add.image(x,520,'forest-front').setDisplaySize(1710,690).setScrollFactor(.75)
+       .setTint(this.round.frontTint).setAlpha(.46).setDepth(2);
    }
    this.player=this.physics.add.sprite(190,480,this.heroId+'-robot').setScale(.50).setDepth(12);
    this.player.setMaxVelocity(560,1100).setCollideWorldBounds(true).setBounce(.04);
    (this.player.body as Phaser.Physics.Arcade.Body).setSize(112,228,true);
    this.platform(570,1140);this.platform(2615,2370);
+   this.decorateRound();
    this.bridgeArt=this.add.tileSprite(1285,651,290,100,'terrain').setDepth(5).setVisible(false);
    this.bridgeBody=this.physics.add.staticImage(1285,651,'platform-physics').setDisplaySize(290,100);
    this.bridgeBody.refreshBody().disableBody(true,true);
@@ -150,11 +168,11 @@ export class PlayScene extends Phaser.Scene{
    this.physics.add.collider(this.player,high2);
    this.add.rectangle(1285,665,280,40,0x1ca4d2,.35).setDepth(3);
    this.add.ellipse(1285,673,340,55,0x5cd4eb,.58).setDepth(3);
-   this.terminal(875,'ЗАДАНИЕ 1');
-   this.terminal(2430,'ЗАДАНИЕ 2');
+   this.terminal(875,'ИСПЫТАНИЕ А');
+   this.terminal(2430,'ИСПЫТАНИЕ Б');
    this.gate1=this.gate(1770);
    this.gate2=this.gate(2740);
-   for(const pos of [[650,490],[1650,486],[2170,417],[3120,492]] as const)this.energy(pos[0],pos[1]);
+   for(const pos of this.round.crystals)this.energy(pos[0],pos[1]);
    for(const x of [580,1850,3140]){
      const sign=this.add.text(x,521,'➜',{fontFamily:'system-ui',fontSize:'58px',color:'#ffea8e',stroke:'#135778',strokeThickness:6}).setDepth(7);
      this.tweens.add({targets:sign,x:x+17,duration:700,yoyo:true,repeat:-1});
@@ -184,14 +202,16 @@ export class PlayScene extends Phaser.Scene{
      three:this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.THREE)
    };
    this.add.rectangle(640,36,1260,61,0x092745,.82).setScrollFactor(0).setDepth(80).setStrokeStyle(2,0x81dbff,.25);
-   this.add.text(24,12,'⚡ МЕТАЛ КАРБОТ  ·  ТЕХНОЛЕС',{fontFamily:'system-ui',fontSize:'21px',fontStyle:'bold',color:'#c9f5ff'}).setScrollFactor(0).setDepth(81);
+   this.add.text(24,12,'⚡ МЕТАЛ КАРБОТ  ·  РАУНД '+this.roundId+'/5  ·  '+this.round.name,{fontFamily:'system-ui',fontSize:'21px',fontStyle:'bold',color:'#c9f5ff'}).setScrollFactor(0).setDepth(81);
    this.hud=this.add.text(1210,15,'✦ КРИСТАЛЛЫ  0 / 4',{fontSize:'22px',fontFamily:'system-ui',fontStyle:'bold',color:'#ffe491'}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
-   this.objective=this.add.text(24,82,'Подойди к синему терминалу',{fontSize:'20px',fontFamily:'system-ui',fontStyle:'bold',color:'#fff6c7',stroke:'#174366',strokeThickness:5}).setScrollFactor(0).setDepth(81);
+   this.objective=this.add.text(24,82,'Подойди к энергетическому терминалу',{fontSize:'20px',fontFamily:'system-ui',fontStyle:'bold',color:'#fff6c7',stroke:'#174366',strokeThickness:5}).setScrollFactor(0).setDepth(81);
    this.formLabel=this.add.text(1220,82,'🤖 '+HEROES[this.heroId].name+'  ·  E — МАШИНА',{fontSize:'16px',fontFamily:'system-ui',color:'#e7f6ff',stroke:'#174366',strokeThickness:4}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
    const mute=this.add.text(1245,82,'♫',{fontSize:'25px',color:'#ccfaff'}).setOrigin(1,0).setScrollFactor(0).setDepth(90).setInteractive({useHandCursor:true});
    mute.on('pointerdown',()=>{const off=audio.toggle();mute.setText(off?'♪':'♫');});
    this.combat=new CombatSystem(this,this.player,this.heroId,()=>this.hit());
-   this.combat.spawnStageOne();
+   this.combat.spawnRound(this.round.enemies,this.roundId);
+   this.combat.setBossShield(this.round.bossRequired);
+   this.addWorldSwitch();
    this.combatHUD=this.add.text(24,117,'❤️ '+this.hearts+'/'+HEROES[this.heroId].maxHealth+
      '   ⚔️ ВРАГИ 0/6  ·  ЛКМ ВЫСТРЕЛ / ПКМ УДАР',
      {fontFamily:'system-ui',fontSize:'17px',fontStyle:'bold',color:'#fce4aa',
