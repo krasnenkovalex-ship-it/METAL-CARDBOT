@@ -91,6 +91,29 @@ export class PlayScene extends Phaser.Scene{
    this.tweens.add({targets:pad,scaleY:1.27,duration:470,yoyo:true,repeat:-1});
    void label;
  }
+ private addBiomePlatforms():void{
+   // Five truly different traversal patterns: optional high routes and distinct movers.
+   type Platform=[number,number,number,boolean];
+   const stages:Record<string,Platform[]>={
+     forest:[[515,476,190,false],[3260,455,210,false]],
+     sky:[[510,457,245,false],[1720,447,205,true],[2950,445,240,false]],
+     factory:[[570,462,230,true],[1970,451,215,false],[3260,463,230,true]],
+     ice:[[750,467,210,false],[1800,450,220,false],[2880,441,230,true]],
+     storm:[[560,452,210,false],[1840,462,250,true],[2940,434,200,false]]
+   };
+   for(const [x,y,w,moving] of stages[this.round.biome]){
+     const top=this.add.tileSprite(x,y,w,62,'terrain').setDepth(5).setTint(this.round.color);
+     const solid=this.physics.add.staticImage(x,y-2,'platform-physics')
+       .setDisplaySize(w,43).refreshBody().setVisible(false);
+     this.physics.add.collider(this.player,solid);
+     this.add.rectangle(x,y-35,w,8,this.round.color,.79).setDepth(6);
+     if(moving){
+       this.tweens.add({targets:[top,solid],y:y-61,
+         duration:1600+(this.roundId*120),repeat:-1,yoyo:true,ease:'Sine.inOut',
+         onUpdate:()=>solid.refreshBody()});
+     }
+   }
+ }
  private addWorldSwitch():void{
    // A genuine in-world optional mechanism: shoot the upper glowing switch.
    const x=2260,y=307;
@@ -263,6 +286,7 @@ export class PlayScene extends Phaser.Scene{
    (this.player.body as Phaser.Physics.Arcade.Body).setSize(112,228,true);
    this.platform(570,1140);this.platform(2615,2370);
    this.decorateRound();
+   this.addBiomePlatforms();
    this.bridgeArt=this.add.tileSprite(1285,651,290,100,'terrain').setDepth(5).setVisible(false);
    this.bridgeBody=this.physics.add.staticImage(1285,651,'platform-physics').setDisplaySize(290,100);
    this.bridgeBody.refreshBody().disableBody(true,true);
