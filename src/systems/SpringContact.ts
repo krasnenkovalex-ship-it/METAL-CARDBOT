@@ -13,7 +13,8 @@ export function crossedSpringTop(feet:FeetSample,pad:SpringBounds,tolerance=9):b
 /** Activation can only happen after a fresh contact, cooldown protects from loops. */
 export class SpringCooldown{
  private last=-Infinity;
- constructor(private readonly cooldownMs=570){}
+ private readonly cooldownMs:number;
+ constructor(cooldownMs=570){this.cooldownMs=cooldownMs;}
  canActivate(now:number):boolean{return now-this.last>=this.cooldownMs;}
  activate(now:number):void{this.last=now;}
  reset():void{this.last=-Infinity;}
