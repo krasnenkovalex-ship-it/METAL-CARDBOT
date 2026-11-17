@@ -41,7 +41,11 @@ test('charger telegraphs before a dash instead of instant collision',()=>{
 test('turret respects fire rate; drone dives with readable warning; hopper jumps',()=>{
  const base={mode:'patrol' as const,now:2000,modeUntil:0,x:50,y:60,homeX:50,homeY:60,playerX:180,playerY:60,direction:1 as const,lastFire:1800,difficulty:2};
  assert.equal(decideEnemy({...base,kind:'turret'},.016).fire,false);
- assert.equal(decideEnemy({...base,kind:'turret',lastFire:0},.016).fire,true);
+ const charge=decideEnemy({...base,kind:'turret',lastFire:0},.016);
+ assert.equal(charge.mode,'windup');assert.equal(charge.warning,true);
+ assert.equal(charge.fire,false);
+ const bolt=decideEnemy({...base,kind:'turret',mode:'windup',modeUntil:2200,now:2300},.016);
+ assert.equal(bolt.mode,'recover');assert.equal(bolt.fire,true);
  const drone=decideEnemy({...base,kind:'drone'},.016);
  assert.equal(drone.mode,'windup');assert.equal(drone.warning,true);
  const hopper=decideEnemy({...base,kind:'hopper'},.016);

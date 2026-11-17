@@ -40,8 +40,18 @@ export function decideEnemy(a:EnemyInput,dt:number):EnemyDecision {
    return base;
  }
  if(a.kind==='turret'){
-   const fire=within&&a.now-a.lastFire>(diff>=2?1500:1950);
-   return {...base,fire,warning:within&&!fire,moveX:0,moveY:0,direction:facing};
+   base.direction=facing;
+   if(a.mode==='patrol'&&within&&a.now-a.lastFire>(diff>=2?1500:1950)){
+     return {...base,mode:'windup',modeUntil:a.now+600,warning:true};
+   }
+   if(a.mode==='windup'){
+     if(a.now<a.modeUntil)return {...base,warning:true};
+     return {...base,mode:'recover',modeUntil:a.now+1000,fire:true};
+   }
+   if(a.mode==='recover'&&a.now>=a.modeUntil){
+     return {...base,mode:'patrol',modeUntil:a.now+450};
+   }
+   return base;
  }
  if(a.kind==='charger'||a.kind==='sentinel'){
    const detection=a.kind==='sentinel'?530:290;
