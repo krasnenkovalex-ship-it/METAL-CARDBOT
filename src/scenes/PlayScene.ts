@@ -269,17 +269,18 @@ export class PlayScene extends Phaser.Scene{
    this.cameras.main.setBackgroundColor('#83cde9');
    this.cameras.main.setBounds(0,0,W,720);
    this.physics.world.setBounds(0,0,W,720);
-   this.add.image(640,360,'sky').setDisplaySize(1280,720).setScrollFactor(0).setDepth(-30)
-     .setTint(this.round.skyTint);
+   const panorama={forest:'sky',sky:'sky-valley',factory:'gear-factory',ice:'ice-caves',storm:'storm-citadel'} as const;
+   this.add.image(640,360,panorama[this.round.biome]).setDisplaySize(1280,720)
+     .setScrollFactor(0).setDepth(-30);
    for(const x of [850,2580,4310]){
      this.add.image(x,465,'forest-back').setDisplaySize(1740,700).setScrollFactor(.26)
-       .setTint(this.round.backTint).setAlpha(.65).setDepth(-20);
+       .setTint(this.round.backTint).setAlpha(this.round.biome==='forest'?.65:.10).setDepth(-20);
    }
    const fog=this.add.rectangle(0,0,W,720,0xffffff,.10).setOrigin(0).setDepth(-10);
    void fog;
    for(const x of [920,2640,4360]){
      this.add.image(x,520,'forest-front').setDisplaySize(1710,690).setScrollFactor(.75)
-       .setTint(this.round.frontTint).setAlpha(.46).setDepth(2);
+       .setTint(this.round.frontTint).setAlpha(this.round.biome==='forest'?.46:.13).setDepth(2);
    }
    this.player=this.physics.add.sprite(190,480,this.heroId+'-robot').setScale(.50).setDepth(12);
    this.player.setMaxVelocity(560,1100).setCollideWorldBounds(true).setBounce(.04);
