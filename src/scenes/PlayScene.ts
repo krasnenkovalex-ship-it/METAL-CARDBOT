@@ -120,7 +120,7 @@ export class PlayScene extends Phaser.Scene{
    this.completed.clear();this.waitForExit.clear();
    this.heroId=currentHero();
    this.car=false;this.changing=false;this.gems=0;this.hearts=HEROES[this.heroId].maxHealth;this.checkpoint=190;this.puzzleLocked=null;this.worldTimer=0;
-   this.touch={left:false,right:false,jump:false,transform:false};
+   this.touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
    this.cameras.main.setBackgroundColor('#83cde9');
    this.cameras.main.setBounds(0,0,W,720);
    this.physics.world.setBounds(0,0,W,720);
