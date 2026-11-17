@@ -15,6 +15,8 @@ export class PlayScene extends Phaser.Scene{
  private round!:RoundDefinition;
  private switchActivated=false;
  private switchCore!:Phaser.GameObjects.Arc;
+ private movingPlatform!:Phaser.Physics.Arcade.Image;
+ private movingArt!:Phaser.GameObjects.TileSprite;
  private lastSpring=0;
  private lastStormPulse=0;
  private finishGuard=false;
@@ -266,9 +268,16 @@ export class PlayScene extends Phaser.Scene{
    this.bridgeBody.refreshBody().disableBody(true,true);
    this.physics.add.collider(this.player,this.bridgeBody);
    // The raised shortcut holds a collectible that takes a deliberate jump.
-   const high=this.physics.add.staticImage(2170,492,'platform-physics').setDisplaySize(330,45).refreshBody().setVisible(false);
-   this.add.tileSprite(2170,495,330,66,'terrain').setDepth(5);
+   const high=this.physics.add.staticImage(2170,492,'platform-physics')
+     .setDisplaySize(330,45).refreshBody().setVisible(false);
+   this.movingArt=this.add.tileSprite(2170,495,330,66,'terrain').setDepth(5);
+   this.movingPlatform=high;
    this.physics.add.collider(this.player,high);
+   if(this.round.biome==='sky'||this.round.biome==='ice'){
+     this.tweens.add({targets:[high,this.movingArt],x:2270,duration:3100,
+       repeat:-1,yoyo:true,ease:'Sine.inOut',
+       onUpdate:()=>high.refreshBody()});
+   }
    const high2=this.physics.add.staticImage(3410,479,'platform-physics').setDisplaySize(230,44).refreshBody().setVisible(false);
    this.add.tileSprite(3410,479,230,65,'terrain').setDepth(5);
    this.physics.add.collider(this.player,high2);
