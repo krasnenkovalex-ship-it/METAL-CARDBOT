@@ -109,7 +109,7 @@ export class PlayScene extends Phaser.Scene{
      this.objective.setText('Секретный механизм найден! Бонусная энергия!');
      const pickup=this.add.circle(2330,390,23,0xcaff89,.95).setStrokeStyle(4,0xffffff).setDepth(11);
      this.tweens.add({targets:pickup,y:365,duration:780,yoyo:true,repeat:-1});
-     this.physics.add.existing(pickup);
+     this.physics.add.existing(pickup,true);
      const body=pickup.body as Phaser.Physics.Arcade.StaticBody;
      if(body){body.setCircle(23);body.updateFromGameObject();}
      this.physics.add.overlap(this.player,pickup,()=>{
@@ -166,7 +166,9 @@ export class PlayScene extends Phaser.Scene{
      gem.destroy();this.gems++;audio.effect('pickup');
      this.cameras.main.flash(110,150,240,255,false);
      this.hud.setText('✦ КРИСТАЛЛЫ  '+this.gems+' / 4');
-     if(this.gems===4)this.objective.setText('Все кристаллы собраны! К порталу!');
+     if(this.gems===4)this.objective.setText(this.round.bossRequired?
+       'Кристаллы собраны! Победи стража и иди к порталу.':
+       'Все кристаллы собраны! К порталу!');
    });
  }
  private gate(x:number):Phaser.GameObjects.Rectangle{
@@ -189,22 +191,25 @@ export class PlayScene extends Phaser.Scene{
    this.player.setVelocity(0,0);
    audio.effect('task');
    this.scene.pause();
-   this.scene.launch('Puzzle',{id});
+   this.scene.launch('Puzzle',{id,round:this.roundId});
  }
  private solvePuzzle(id:Mission):void{
    if(this.completed.has(id))return;
    this.completed.add(id);this.puzzleLocked=null;this.waitForExit.delete(id);
-   if(id==='bridge'){
+   if(id===this.round.puzzleIds[0]){
      this.bridgeBody.enableBody(false,1285,651,true,true).refreshBody().setVisible(false);
      this.bridgeArt.setVisible(true).setY(735);
      this.tweens.add({targets:this.bridgeArt,y:651,duration:1350,ease:'Back.easeOut'});
      this.openGate(this.gate1);
      this.checkpoint=1450;
-     this.objective.setText('Мост открыт! Найди генератор дальше по тропе');
+     this.objective.setText('Мост открыт! Ищи второе испытание в '+this.round.name);
    } else {
      this.openGate(this.gate2);
      this.checkpoint=2790;
-     this.objective.setText('Генератор включён! Собери все кристаллы');
+     this.combat.setBossShield(false);
+     this.objective.setText(this.round.bossRequired?
+       'Защита босса отключена! Победи его и собери кристаллы.':
+       'Ворота открыты! Собери четыре кристалла и найди портал.');
    }
  }
  private makeMobileControls():void{
@@ -382,7 +387,7 @@ export class PlayScene extends Phaser.Scene{
    if(!this.changing){
      if(left)this.player.setVelocityX(-speed);
      else if(right)this.player.setVelocityX(speed);
-     else this.player.setVelocityX(body.velocity.x*.72);
+     else this.player.setVelocityX(body.velocity.x*(this.round.gimmick==='ice-slide'?.93:.72));
      if(Phaser.Input.Keyboard.JustDown(this.keys.one))this.switchHero('bluecop');
      if(Phaser.Input.Keyboard.JustDown(this.keys.two))this.switchHero('megatrucker');
      if(Phaser.Input.Keyboard.JustDown(this.keys.three))this.switchHero('phoenixfire');
@@ -407,23 +412,30 @@ export class PlayScene extends Phaser.Scene{
      else if(this.car&&!this.changing)this.player.setAngle(Math.sin(time*.028)*.8);
    }else if(!this.changing)this.player.setAngle(0);
    this.worldTimer=time;
+   this.applyGimmick(time,body,delta);
    this.combat.update(delta,time);
    const stats=this.combat.summary;
    this.combatHUD.setText('❤️ '+this.hearts+'/'+HEROES[this.heroId].maxHealth+
      '   ⚔️ ВРАГИ '+stats.defeated+'/'+stats.total+
      '   🖱️ ЛКМ — ВЫСТРЕЛ / ПКМ — УДАР');
-   for(const [id,x] of [['bridge',875],['generator',2430]] as [Mission,number][]){
+   for(const [id,x] of [[this.round.puzzleIds[0],875],[this.round.puzzleIds[1],2430]] as [Mission,number][]){
      if(this.completed.has(id)||this.puzzleLocked)continue;
      const inRange=Math.abs(this.player.x-x)<82&&Math.abs(this.player.y-518)<185;
      if(!inRange){this.waitForExit.delete(id);continue;}
      if(!this.waitForExit.has(id)){this.beginPuzzle(id);break;}
    }
    if(this.player.y>645)this.hit();
-   if(this.player.x>=3540){
-     if(this.gems===4&&this.completed.has('bridge')&&this.completed.has('generator')){
-       audio.effect('win');markComplete(1,this.gems);this.scene.start('Win',{crystals:this.gems});
-     } else {
-       const msg=this.gems<4?'Остались кристаллы: '+(4-this.gems):'Реши обе логические задачи!';
+   if(!this.finishGuard&&this.player.x>=3540){
+     const bossAlive=this.combat.bossAlive;
+     if(canFinishRound(this.completed,this.round.puzzleIds,this.gems,this.round.bossRequired,bossAlive)){
+       this.finishGuard=true;
+       audio.effect('win');markComplete(this.roundId,this.gems);
+       this.scene.start('Win',{crystals:this.gems,round:this.roundId,
+         title:this.round.name,hero:this.heroId,enemyCount:this.combat.summary.defeated});
+     }else{
+       const msg=this.gems<4?'Осталось кристаллов: '+(4-this.gems):
+         !this.round.puzzleIds.every(id=>this.completed.has(id))?'Реши оба логических испытания!':
+         this.round.bossRequired&&bossAlive?'Победи главного стража!':'Ищи портал!';
        this.objective.setText(msg);
      }
    }
