@@ -49,7 +49,7 @@ test('child can solve memory and dial tasks using real mouse inputs',async({page
  });
  await page.waitForFunction(()=>window.__metal2dGame?.scene?.isActive('Puzzle'));
  // Visual signals [red, yellow, blue] are shown over 2.5s before the player acts.
- await page.waitForTimeout(3100);
+ await page.waitForFunction(()=>window.__metal2dGame?.scene?.getScene('Puzzle')?.memoryReady===true,null,{timeout:15000});
  await page.mouse.click(390,390);
  await page.mouse.click(890,390);
  await page.mouse.click(640,390);

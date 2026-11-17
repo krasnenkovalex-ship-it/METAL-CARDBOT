@@ -105,6 +105,8 @@ export class PlayScene extends Phaser.Scene{
      const top=this.add.tileSprite(x,y,w,62,'terrain').setDepth(5).setTint(this.round.color);
      const solid=this.physics.add.staticImage(x,y-2,'platform-physics')
        .setDisplaySize(w,43).refreshBody().setVisible(false);
+     const body=solid.body as Phaser.Physics.Arcade.StaticBody;
+     body.checkCollision.left=false;body.checkCollision.right=false;body.checkCollision.down=false;
      this.physics.add.collider(this.player,solid);
      this.add.rectangle(x,y-35,w,8,this.round.color,.79).setDepth(6);
      if(moving){
@@ -297,6 +299,8 @@ export class PlayScene extends Phaser.Scene{
      .setDisplaySize(330,45).refreshBody().setVisible(false);
    this.movingArt=this.add.tileSprite(2170,495,330,66,'terrain').setDepth(5);
    this.movingPlatform=high;
+   const liftBody=high.body as Phaser.Physics.Arcade.StaticBody;
+   liftBody.checkCollision.left=false;liftBody.checkCollision.right=false;liftBody.checkCollision.down=false;
    this.physics.add.collider(this.player,high);
    if(this.round.biome==='sky'||this.round.biome==='ice'){
      this.tweens.add({targets:[high,this.movingArt],x:2270,duration:3100,
@@ -305,6 +309,8 @@ export class PlayScene extends Phaser.Scene{
    }
    const high2=this.physics.add.staticImage(3410,479,'platform-physics').setDisplaySize(230,44).refreshBody().setVisible(false);
    this.add.tileSprite(3410,479,230,65,'terrain').setDepth(5);
+   const upperBody=high2.body as Phaser.Physics.Arcade.StaticBody;
+   upperBody.checkCollision.left=false;upperBody.checkCollision.right=false;upperBody.checkCollision.down=false;
    this.physics.add.collider(this.player,high2);
    this.add.rectangle(1285,665,280,40,0x1ca4d2,.35).setDepth(3);
    this.add.ellipse(1285,673,340,55,0x5cd4eb,.58).setDepth(3);
