@@ -45,6 +45,107 @@ export class PlayScene extends Phaser.Scene{
    this.roundId=(Number.isInteger(n)&&n>=1&&n<=5?n:1) as RoundId;
    this.round=getRound(this.roundId);
  }
+ private decorateRound():void{
+   // Authored stage identity on top of the shared, scrollable platform layout.
+   const biome=this.round.biome;
+   const color=this.round.color;
+   for(let i=0;i<18;i++){
+     const x=150+i*218,skyY=225+(i%4)*62;
+     if(biome==='sky'){
+       const island=this.add.ellipse(x,skyY+86,160+(i%3)*60,35,0x536e9b,.56).setDepth(-11);
+       this.add.ellipse(x,skyY+67,145+(i%3)*45,22,0xd4deff,.58).setDepth(-10);
+       this.tweens.add({targets:island,y:skyY+91,duration:1500+i*45,
+         yoyo:true,repeat:-1,ease:'Sine.inOut'});
+     }else if(biome==='factory'){
+       this.add.rectangle(x,400,61,470,0x596b79,.35).setDepth(-12);
+       this.add.rectangle(x+35,400,12,460,0xffab56,.37).setDepth(-11);
+       const gear=this.add.text(x,210,'⚙',{fontSize:120+(i%3)*24,color:'#a6cad3'})
+         .setOrigin(.5).setAlpha(.36).setDepth(-10);
+       this.tweens.add({targets:gear,angle:i%2?360:-360,duration:9000+i*200,repeat:-1});
+     }else if(biome==='ice'){
+       this.add.triangle(x,220,0,0,55,0,22,150,0xaefbff,.37).setDepth(-11);
+       const shard=this.add.ellipse(x+48,535,50,145,0xa8f4ff,.30).setDepth(3);
+       this.tweens.add({targets:shard,alpha:.10,duration:1500+i*61,yoyo:true,repeat:-1});
+     }else if(biome==='storm'){
+       this.add.rectangle(x,250,16,350,0x9c85cb,.38).setDepth(-11);
+       const orb=this.add.circle(x,140,18,0xf7b9f8,.5).setDepth(-10);
+       this.tweens.add({targets:orb,alpha:.15,scale:1.5,duration:850+i*24,yoyo:true,repeat:-1});
+     }else{
+       const flower=this.add.circle(x,562,9,i%2?0xffdc7f:0x83e6ff,.75).setDepth(6);
+       this.tweens.add({targets:flower,y:558,alpha:.35,duration:700+i*27,yoyo:true,repeat:-1});
+     }
+   }
+   const caption=this.add.text(640,171,this.round.subtitle.toUpperCase(),{
+     fontFamily:'system-ui',fontSize:'22px',fontStyle:'bold',color:'#fff9cf',
+     stroke:'#09293e',strokeThickness:5}).setOrigin(.5).setScrollFactor(0).setDepth(80);
+   this.tweens.add({targets:caption,alpha:0,duration:700,delay:3300});
+   // Physical activity varies by round: spring jump, aerial lift, conveyor, ice and storms.
+   const pad=this.add.rectangle(2030,588,125,27,color,.9).setStrokeStyle(5,0xdffff6)
+     .setDepth(6);
+   const label=this.add.text(2030,571,biome==='factory'?'⇢ УСКОРИТЕЛЬ':biome==='ice'?'❄ ЛЕДЯНОЙ ТРАМПЛИН':
+     biome==='sky'?'✦ ВЕТЕР':biome==='storm'?'⚡ ПРЫЖОК':'★ ПРУЖИНА',
+     {fontFamily:'system-ui',fontSize:'15px',fontStyle:'bold',color:'#e5fdff',
+       stroke:'#09283c',strokeThickness:4}).setOrigin(.5).setDepth(7);
+   this.tweens.add({targets:pad,scaleY:1.27,duration:470,yoyo:true,repeat:-1});
+   void label;
+ }
+ private addWorldSwitch():void{
+   // A genuine in-world optional mechanism: shoot the upper glowing switch.
+   const x=2260,y=307;
+   const ring=this.add.circle(x,y,38,0x176a9b,.93).setStrokeStyle(7,0x9af6ff).setDepth(7);
+   const core=this.add.circle(x,y,19,0xffe58b,.9).setDepth(8);
+   const name=this.add.text(x,y-64,'🎯 АКТИВИРУЙ ВЫСТРЕЛОМ',{
+     fontFamily:'system-ui',fontSize:'15px',fontStyle:'bold',color:'#edffff',
+     stroke:'#143e67',strokeThickness:5}).setOrigin(.5).setDepth(9);
+   this.tweens.add({targets:core,scale:1.32,duration:540,yoyo:true,repeat:-1});
+   this.switchCore=core;
+   this.combat.registerTarget(x,y,51,()=>{
+     if(this.switchActivated)return;
+     this.switchActivated=true;audio.effect('open');
+     ring.setFillStyle(0x2d9b71).setStrokeStyle(7,0xc7ff9e);
+     core.setFillStyle(0x8dff8b);
+     name.setText('✓ СЕКРЕТ АКТИВИРОВАН!');
+     this.cameras.main.flash(190,90,255,184,false);
+     this.objective.setText('Секретный механизм найден! Бонусная энергия!');
+     const pickup=this.add.circle(2330,390,23,0xcaff89,.95).setStrokeStyle(4,0xffffff).setDepth(11);
+     this.tweens.add({targets:pickup,y:365,duration:780,yoyo:true,repeat:-1});
+     this.physics.add.existing(pickup);
+     const body=pickup.body as Phaser.Physics.Arcade.StaticBody;
+     if(body){body.setCircle(23);body.updateFromGameObject();}
+     this.physics.add.overlap(this.player,pickup,()=>{
+       if(!pickup.active)return;
+       pickup.destroy();this.hearts=Math.min(HEROES[this.heroId].maxHealth,this.hearts+1);
+       audio.effect('pickup');
+     });
+   });
+ }
+ private applyGimmick(time:number,body:Phaser.Physics.Arcade.Body,delta:number):void{
+   if(!this.player.active||this.puzzleLocked)return;
+   const x=this.player.x;
+   if(Math.abs(x-2030)<66&&Math.abs(this.player.y-524)<125&&
+     body.blocked.down&&time-this.lastSpring>1150){
+     if(this.round.gimmick==='spring'||this.round.gimmick==='wind'||
+       this.round.gimmick==='ice-slide'||this.round.gimmick==='storm-pulse'){
+       this.lastSpring=time;
+       this.player.setVelocityY(-850);
+       audio.effect('jump');this.cameras.main.flash(65,80,190,255,false);
+     }
+   }
+   if(this.round.gimmick==='conveyor'&&body.blocked.down&&x>1810&&x<2330){
+     this.player.setVelocityX(body.velocity.x+35);
+   }else if(this.round.gimmick==='wind'&&this.player.y<540){
+     this.player.setVelocityX(body.velocity.x+Math.sin(time*.0013)*22);
+   }
+   if(this.round.gimmick==='storm-pulse'&&time-this.lastStormPulse>5300){
+     this.lastStormPulse=time;
+     const bolt=this.add.text(1000+(Math.floor(time/5300)%3)*860,205,'ϟ',{
+       fontFamily:'system-ui',fontSize:'170px',fontStyle:'bold',color:'#fff1a2'
+     }).setDepth(8).setAlpha(.85);
+     this.tweens.add({targets:bolt,alpha:0,scale:1.2,duration:480,
+       onComplete:()=>bolt.destroy()});
+   }
+   void delta;
+ }
  private platform(x:number,w:number,y=651):void{
    this.add.tileSprite(x,y,w,100,'terrain').setDepth(5);
    const ground=this.physics.add.staticImage(x,y,'platform-physics');
