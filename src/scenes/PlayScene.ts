@@ -7,6 +7,7 @@ import {getRound,canFinishRound,type RoundDefinition,type RoundId} from '../data
 import {PlayerMotor} from '../systems/PlayerMotor';
 import {KinematicPlatform} from '../systems/KinematicPlatform';
 import {SpringPad} from '../systems/SpringPad';
+import {WorldPuzzle} from '../systems/WorldPuzzle';
 
 type Mission=string;
 const W=3850;
@@ -21,6 +22,7 @@ export class PlayScene extends Phaser.Scene{
  private readonly motor=new PlayerMotor();
  private readonly movingPlatforms:KinematicPlatform[]=[];
  private spring!:SpringPad;
+ private worldPuzzle!:WorldPuzzle;
  private lastStormPulse=0;
  private finishGuard=false;
  private combatHUD!:Phaser.GameObjects.Text;
@@ -206,8 +208,12 @@ export class PlayScene extends Phaser.Scene{
    this.touch={left:false,right:false,jump:false,transform:false,shoot:false,punch:false};
    this.player.setVelocity(0,0);
    audio.effect('task');
-   this.scene.pause();
-   this.scene.launch('Puzzle',{id,round:this.roundId});
+   if(this.roundId===1&&(id==='bridge'||id==='generator')){
+     this.worldPuzzle.start(id,id==='bridge'?875:2430);
+   }else{
+     this.scene.pause();
+     this.scene.launch('Puzzle',{id,round:this.roundId});
+   }
  }
  private solvePuzzle(id:Mission):void{
    if(this.completed.has(id))return;
@@ -345,6 +351,10 @@ export class PlayScene extends Phaser.Scene{
    this.formLabel=this.add.text(1220,82,'🤖 '+HEROES[this.heroId].name+'  ·  E — МАШИНА',{fontSize:'16px',fontFamily:'system-ui',color:'#e7f6ff',stroke:'#174366',strokeThickness:4}).setOrigin(1,0).setScrollFactor(0).setDepth(81);
    const mute=this.add.text(1245,82,'♫',{fontSize:'25px',color:'#ccfaff'}).setOrigin(1,0).setScrollFactor(0).setDepth(90).setInteractive({useHandCursor:true});
    mute.on('pointerdown',()=>{const off=audio.toggle();mute.setText(off?'♪':'♫');});
+   this.worldPuzzle=new WorldPuzzle(this,
+     id=>this.solvePuzzle(id),
+     id=>{this.puzzleLocked=null;this.waitForExit.add(id);}
+   );
    this.combat=new CombatSystem(this,this.player,this.heroId,()=>this.hit());
    this.combat.spawnRound(this.round.enemies,this.roundId);
    this.combat.setBossShield(this.round.bossRequired);
@@ -367,6 +377,7 @@ export class PlayScene extends Phaser.Scene{
      this.puzzleLocked=null;this.waitForExit.add(id);
    });
    this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{
+     this.worldPuzzle.close();
      this.combat.destroy();
      for(const moving of this.movingPlatforms)moving.destroy();
      this.movingPlatforms.length=0;
@@ -413,6 +424,10 @@ export class PlayScene extends Phaser.Scene{
  }
  update(time:number,delta:number){
    if(!this.player.active)return;
+   if(this.worldPuzzle?.active){
+      this.player.setVelocity(0,0);
+      return;
+   }
    const body=this.player.body as Phaser.Physics.Arcade.Body;
    const left=this.keys.left.isDown||this.keys.arrowLeft.isDown||this.touch.left;
    const right=this.keys.right.isDown||this.keys.arrowRight.isDown||this.touch.right;
