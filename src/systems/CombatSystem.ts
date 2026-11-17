@@ -49,7 +49,7 @@ export class CombatSystem {
       lastAttack:0,alive:true,bar});
   }
   spawnStageOne():void{
-    this.spawn(470,531,'crawler');
+    this.spawn(1040,531,'crawler');
     this.spawn(1530,524,'drone');
     this.spawn(2015,535,'crawler');
     this.spawn(2640,518,'drone');
